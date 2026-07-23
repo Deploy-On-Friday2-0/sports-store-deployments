@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+
+*.key
+*.pem
+*.log
+rendered/
+helm/*/charts/
+
+.DS_Store
+.idea/
+.vscode/
