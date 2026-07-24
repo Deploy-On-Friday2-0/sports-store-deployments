@@ -12,7 +12,7 @@ so don't rename it.
 
 ```
 k8s/
-├── namespace.yaml
+├── 00-namespace.yaml
 ├── secrets/
 │   └── app-secrets.yaml        # JWT_SECRET, per-service MONGO_URI, mongo root creds
 ├── configmaps/
@@ -45,10 +45,29 @@ change a hostname here, update the matching `proxy_pass` line in
 Only the `gateway` Service should be externally reachable (NodePort/LoadBalancer,
 or an Ingress if your cluster has a controller) — everything else stays ClusterIP.
 
+## Local images
+
+All 7 images are built directly into the `sports-store` Minikube profile's Docker
+daemon (`eval $(minikube -p sports-store docker-env)` before `docker build`), tagged
+`:v1.0.0` — not pushed to any registry:
+
+- `sports-store-frontend:v1.0.0`
+- `sports-store-gateway:v1.0.0`
+- `sports-store-auth-service:v1.0.0`
+- `sports-store-catalog-service:v1.0.0`
+- `sports-store-cart-service:v1.0.0`
+- `sports-store-order-service:v1.0.0`
+- `sports-store-payment-service:v1.0.0`
+
+Because these never reach a registry, every Deployment's container must set
+`imagePullPolicy: IfNotPresent` (the default, `Always`, will try to pull from
+Docker Hub and fail with `ImagePullBackOff` even though the image already exists
+on the node).
+
 ## Suggested apply order
 
 ```bash
-kubectl create namespace sports-store   # or: kubectl apply -f namespace.yaml
+kubectl create namespace sports-store   # or: kubectl apply -f 00-namespace.yaml
 
 # Secrets first — mongodb/values.yaml (if you use existingSecret) and every
 # app Deployment below reference app-secrets, so it has to exist already.
