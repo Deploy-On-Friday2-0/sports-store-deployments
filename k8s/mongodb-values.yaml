@@ -1,0 +1,48 @@
+# Values for the Bitnami MongoDB Helm chart (v15.6.26 / chart mongodb-15.x,
+# app version 7.0.14) — installed separately from the app Deployments, see
+# ../README.md.
+#
+# architecture: standalone (chart default) — matches Stage 2's single mongo
+# container; no replica set needed for a course project.
+#
+# image.repository override: Bitnami stopped publishing pinned version tags
+# (e.g. 7.0.14-debian-12-r3) to the free docker.io/bitnami/mongodb catalog —
+# only :latest remains there. The exact tag this chart version expects is
+# still published under docker.io/bitnamilegacy/mongodb, Bitnami's official
+# mirror for this migration.
+image:
+  repository: bitnamilegacy/mongodb
+
+auth:
+  # Key name required by this chart version: mongodb-root-password.
+  existingSecret: app-secrets
+
+persistence:
+  enabled: true
+  storageClass: standard
+  size: 8Gi
+
+# Mounts the seed script from 01-mongodb-init-configmap.yaml as a single file
+# (subPath, so it doesn't shadow anything else that might land in
+# /docker-entrypoint-initdb.d/) rather than the whole ConfigMap directory.
+# The image's entrypoint only runs *.js/*.sh files found there, and only
+# against an empty /bitnami/mongodb data directory — verified by restarting
+# the mongo pod against the same PVC and confirming the seed does not re-run.
+extraVolumes:
+  - name: init-mongo-script
+    configMap:
+      name: mongodb-init-script
+
+extraVolumeMounts:
+  - name: init-mongo-script
+    mountPath: /docker-entrypoint-initdb.d/init-mongo.js
+    subPath: init-mongo.js
+    readOnly: true
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

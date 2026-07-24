@@ -10,4 +10,4 @@ GitOps source of truth for deploying the Sports Store platform.
 - Environment-specific image values
 - Observability configuration
 
-The current `k8s/` directory contains starter manifests with TODO markers. Application source and cloud infrastructure do not belong in this repository.
+See `k8s/README.md` for the current manifest layout and apply order. Application source and cloud infrastructure do not belong in this repository.

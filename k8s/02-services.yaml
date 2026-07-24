@@ -1,0 +1,107 @@
+# ClusterIP Services for the 7 application microservices (MongoDB gets its
+# own Service from the Bitnami Helm chart — see mongodb-values.yaml).
+#
+# Names match the hostnames baked into sports-store-gateway's nginx.conf
+# (proxy_pass http://auth:8001, etc.) and the CATALOG_URL/CART_URL/PAYMENT_URL
+# values wired into 03-deployments.yaml, and mirror Stage 2's Compose service
+# names exactly. None of these are externally reachable — 04-ingress.yaml
+# routes directly to frontend/auth/catalog/cart/order/payment; "gateway" is
+# deployed per the workload list but isn't in the Ingress routing table (see
+# 04-ingress.yaml's header comment for why).
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: sports-store
+  labels:
+    app: frontend
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: sports-store
+  labels:
+    app: gateway
+spec:
+  selector:
+    app: gateway
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth
+  namespace: sports-store
+  labels:
+    app: auth
+spec:
+  selector:
+    app: auth
+  ports:
+    - port: 8001
+      targetPort: 8001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog
+  namespace: sports-store
+  labels:
+    app: catalog
+spec:
+  selector:
+    app: catalog
+  ports:
+    - port: 8002
+      targetPort: 8002
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cart
+  namespace: sports-store
+  labels:
+    app: cart
+spec:
+  selector:
+    app: cart
+  ports:
+    - port: 8003
+      targetPort: 8003
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order
+  namespace: sports-store
+  labels:
+    app: order
+spec:
+  selector:
+    app: order
+  ports:
+    - port: 8004
+      targetPort: 8004
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment
+  namespace: sports-store
+  labels:
+    app: payment
+spec:
+  selector:
+    app: payment
+  ports:
+    - port: 8005
+      targetPort: 8005
