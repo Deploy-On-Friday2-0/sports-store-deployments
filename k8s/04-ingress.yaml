@@ -1,0 +1,64 @@
+# Ingress replaces the NGINX gateway's routing role for this cluster: it
+# routes straight to each backend Service rather than through the gateway
+# Deployment (which is still deployed per the workload list in
+# 03-deployments.yaml, just not addressed by any rule here). Paths match
+# what the frontend actually calls (see sports-store-frontend/src/*.jsx —
+# /api/products, /api/auth, /api/cart, /api/orders, /api/payments) and what
+# sports-store-gateway/nginx.conf already proxies in Stage 2 — not the
+# /api/v1/* scheme, which nothing in this codebase calls or serves. No
+# rewrite-target is set: each backend's own FastAPI routes already expect
+# the full /api/<name> prefix (see services/*/main.py's
+# app.include_router(..., prefix="/api")), the same way nginx's proxy_pass
+# forwards the untouched URI in Stage 2.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sports-store
+  namespace: sports-store
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /api/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 8001
+          - path: /api/products
+            pathType: Prefix
+            backend:
+              service:
+                name: catalog
+                port:
+                  number: 8002
+          - path: /api/cart
+            pathType: Prefix
+            backend:
+              service:
+                name: cart
+                port:
+                  number: 8003
+          - path: /api/orders
+            pathType: Prefix
+            backend:
+              service:
+                name: order
+                port:
+                  number: 8004
+          - path: /api/payments
+            pathType: Prefix
+            backend:
+              service:
+                name: payment
+                port:
+                  number: 8005
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
