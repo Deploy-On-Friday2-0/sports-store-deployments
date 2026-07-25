@@ -1,0 +1,31 @@
+# Routes straight to each backend Service, same design as the raw
+# k8s/04-ingress.yaml: paths match what the frontend actually calls
+# (/api/products, /api/auth, /api/cart, /api/orders, /api/payments), not an
+# unused /api/v1/* scheme. Only services with an ingressPath set in
+# values.yaml get a rule — "gateway" deliberately has none (see
+# values.yaml's comment on why it's still deployed but not routed to).
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "sports-store.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sports-store.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - http:
+        paths:
+          {{- range $name, $svc := .Values.services }}
+          {{- if $svc.ingressPath }}
+          - path: {{ $svc.ingressPath }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $name }}
+                port:
+                  number: {{ $svc.port }}
+          {{- end }}
+          {{- end }}
+{{- end }}

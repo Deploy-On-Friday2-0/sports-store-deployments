@@ -1,0 +1,256 @@
+# Values for the sports-store parent chart. Environment-specific overrides
+# (real secrets, resource sizing, replica counts) belong in a separate
+# -f values file per environment — everything here is safe local-cluster
+# defaults, same spirit as the raw k8s/01-secrets.yaml placeholder creds.
+
+imagePullPolicy: IfNotPresent
+
+containerSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  allowPrivilegeEscalation: false
+
+secrets:
+  jwtSecret: dev-secret-change-me
+  mongoRootPassword: dev-mongo-pw-change-me
+
+ingress:
+  enabled: true
+  className: nginx
+
+# ---------------------------------------------------------------------
+# Bitnami MongoDB sub-chart (dependency declared in Chart.yaml, alias
+# "mongodb") — passed straight through as this chart's "mongodb:" key.
+# Same settings verified working in DEP-159's standalone mongodb-values.yaml.
+# ---------------------------------------------------------------------
+mongodb:
+  # Bitnami stopped publishing pinned version tags (e.g. 7.0.14-debian-12-r3,
+  # what chart 15.6.26 expects) to the free docker.io/bitnami/mongodb
+  # catalog — only :latest remains there. bitnamilegacy is Bitnami's own
+  # mirror for this migration; verified working in DEP-159.
+  image:
+    repository: bitnamilegacy/mongodb
+  auth:
+    # Key name required by this chart version: mongodb-root-password —
+    # provided by this chart's own templates/secret.yaml.
+    existingSecret: app-secrets
+  persistence:
+    enabled: true
+    storageClass: standard
+    size: 8Gi
+    # Survives `helm uninstall` so a reinstall reattaches to the same data
+    # instead of losing it — see helm/sports-store/README.md's lifecycle
+    # notes for what this does and doesn't cover.
+    resourcePolicy: keep
+  extraVolumes:
+    - name: init-mongo-script
+      configMap:
+        name: mongodb-init-script
+  extraVolumeMounts:
+    - name: init-mongo-script
+      mountPath: /docker-entrypoint-initdb.d/init-mongo.js
+      subPath: init-mongo.js
+      readOnly: true
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ---------------------------------------------------------------------
+# The 7 first-party microservices. templates/deployment.yaml and
+# templates/service.yaml range over this map once each — adding an eighth
+# service means adding an entry here, not a new template.
+#
+# env entries are emitted as-is (either `value:` or `valueFrom:`), so this
+# map is the single place backend wiring (CATALOG_URL, JWT_SECRET, etc.)
+# lives — no separate ConfigMap for non-secret config, matching DEP-159's
+# choice not to introduce one the ticket didn't ask for.
+#
+# ingressPath: only services that should be reachable through
+# templates/ingress.yaml have one set. "gateway" is deployed (all 7
+# microservices, per this epic's scope) but deliberately has none — see
+# k8s/README.md's note carried over from DEP-159: Ingress routes straight
+# to each backend Service rather than through the gateway Deployment, so
+# Ingress paths can match the frontend's real calls without a second
+# rebuild of the gateway image with different upstream names.
+# ---------------------------------------------------------------------
+services:
+  frontend:
+    image: sports-store-frontend
+    tag: v1.0.0
+    port: 80
+    replicas: 1
+    healthPath: /health
+    ingressPath: /
+    env: []
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 150m
+        memory: 128Mi
+
+  gateway:
+    image: sports-store-gateway
+    tag: v1.0.0
+    port: 80
+    replicas: 1
+    healthPath: /health
+    env: []
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 150m
+        memory: 128Mi
+
+  auth:
+    image: sports-store-auth-service
+    tag: v1.0.0
+    port: 8001
+    replicas: 1
+    healthPath: /health
+    ingressPath: /api/auth
+    env:
+      - name: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "90"
+      - name: JWT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: app-secrets
+            key: JWT_SECRET
+      - name: MONGO_URI
+        valueFrom:
+          secretKeyRef:
+            name: app-secrets
+            key: MONGO_URI
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+  catalog:
+    image: sports-store-catalog-service
+    tag: v1.0.0
+    port: 8002
+    replicas: 1
+    healthPath: /health
+    ingressPath: /api/products
+    env:
+      - name: JWT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: app-secrets
+            key: JWT_SECRET
+      - name: MONGO_URI
+        valueFrom:
+          secretKeyRef:
+            name: app-secrets
+            key: MONGO_URI
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+  cart:
+    image: sports-store-cart-service
+    tag: v1.0.0
+    port: 8003
+    replicas: 1
+    healthPath: /health
+    ingressPath: /api/cart
+    env:
+      - name: CATALOG_URL
+        value: http://catalog:8002
+      - name: JWT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: app-secrets
+            key: JWT_SECRET
+      - name: MONGO_URI
+        valueFrom:
+          secretKeyRef:
+            name: app-secrets
+            key: MONGO_URI
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+  order:
+    image: sports-store-order-service
+    tag: v1.0.0
+    port: 8004
+    replicas: 1
+    healthPath: /health
+    ingressPath: /api/orders
+    env:
+      - name: CART_URL
+        value: http://cart:8003
+      - name: CATALOG_URL
+        value: http://catalog:8002
+      - name: PAYMENT_URL
+        value: http://payment:8005
+      - name: SHIPPING_FLAT_RATE
+        value: "5.00"
+      - name: FREE_SHIPPING_THRESHOLD
+        value: "100"
+      - name: JWT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: app-secrets
+            key: JWT_SECRET
+      - name: MONGO_URI
+        valueFrom:
+          secretKeyRef:
+            name: app-secrets
+            key: MONGO_URI
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+  payment:
+    image: sports-store-payment-service
+    tag: v1.0.0
+    port: 8005
+    replicas: 1
+    healthPath: /health
+    ingressPath: /api/payments
+    env:
+      - name: PAYMENT_FAILURE_SUFFIX
+        value: "0000"
+      - name: JWT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: app-secrets
+            key: JWT_SECRET
+      - name: MONGO_URI
+        valueFrom:
+          secretKeyRef:
+            name: app-secrets
+            key: MONGO_URI
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
