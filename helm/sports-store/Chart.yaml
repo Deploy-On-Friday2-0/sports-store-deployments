@@ -1,0 +1,13 @@
+apiVersion: v2
+name: sports-store
+description: Parent Helm chart for the Sports Store platform — 7 first-party microservices plus a MongoDB dependency
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Deploy-On-Friday2-0
+dependencies:
+  - name: mongodb
+    version: 15.6.26
+    repository: https://charts.bitnami.com/bitnami
+    alias: mongodb

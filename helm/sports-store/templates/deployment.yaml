@@ -1,0 +1,67 @@
+# Single template, ranged over .Values.services, renders all 7 microservice
+# Deployments. Names stay unprefixed (see _helpers.tpl's comment on
+# sports-store.fullname for why). readinessProbe/livenessProbe hit each
+# service's real /health endpoint on its real containerPort — there is no
+# initContainer gating startup on MongoDB; each backend's Mongo client
+# already retries lazily per-request (services/*/database.py), so a
+# request that arrives before Mongo is reachable fails and self-heals on
+# the next one, the same behavior verified in Stage 2/DEP-159.
+{{- range $name, $svc := .Values.services }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "sports-store.selectorLabels" $name | nindent 4 }}
+    {{- include "sports-store.labels" $ | nindent 4 }}
+spec:
+  replicas: {{ $svc.replicas }}
+  selector:
+    matchLabels:
+      {{- include "sports-store.selectorLabels" $name | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "sports-store.selectorLabels" $name | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: "{{ $svc.image }}:{{ $svc.tag }}"
+          imagePullPolicy: {{ $.Values.imagePullPolicy }}
+          ports:
+            - containerPort: {{ $svc.port }}
+          {{- if $svc.env }}
+          env:
+            {{- range $svc.env }}
+            - name: {{ .name }}
+              {{- if hasKey . "value" }}
+              value: {{ .value | quote }}
+              {{- else if .valueFrom }}
+              valueFrom:
+                {{- toYaml .valueFrom | nindent 16 }}
+              {{- end }}
+            {{- end }}
+          {{- end }}
+          securityContext:
+            {{- toYaml $.Values.containerSecurityContext | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: {{ $svc.healthPath | default "/health" }}
+              port: {{ $svc.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: {{ $svc.healthPath | default "/health" }}
+              port: {{ $svc.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 8
+          resources:
+            {{- toYaml $svc.resources | nindent 12 }}
+{{- end }}
