@@ -32,6 +32,11 @@ spec:
           imagePullPolicy: {{ $.Values.imagePullPolicy }}
           ports:
             - containerPort: {{ $svc.port }}
+          {{- if $svc.appSecrets }}
+          envFrom:
+            - secretRef:
+                name: sports-store-app-secrets
+          {{- end }}
           {{- if $svc.env }}
           env:
             {{- range $svc.env }}

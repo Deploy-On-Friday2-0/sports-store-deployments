@@ -1,7 +1,5 @@
-# Values for the sports-store parent chart. Environment-specific overrides
-# (real secrets, resource sizing, replica counts) belong in a separate
-# -f values file per environment — everything here is safe local-cluster
-# defaults, same spirit as the raw k8s/01-secrets.yaml placeholder creds.
+# Values for the sports-store parent chart. Secrets are synchronized from AWS
+# Secrets Manager by templates/external-secret.yaml and never belong here.
 
 imagePullPolicy: IfNotPresent
 
@@ -9,10 +7,6 @@ containerSecurityContext:
   runAsNonRoot: true
   runAsUser: 10001
   allowPrivilegeEscalation: false
-
-secrets:
-  jwtSecret: dev-secret-change-me
-  mongoRootPassword: dev-mongo-pw-change-me
 
 ingress:
   enabled: true
@@ -31,9 +25,8 @@ mongodb:
   image:
     repository: bitnamilegacy/mongodb
   auth:
-    # Key name required by this chart version: mongodb-root-password —
-    # provided by this chart's own templates/secret.yaml.
-    existingSecret: app-secrets
+    # The ExternalSecret provides the key name required by this chart version.
+    existingSecret: sports-store-app-secrets
   persistence:
     enabled: true
     storageClass: standard
@@ -101,6 +94,7 @@ services:
     replicas: 1
     healthPath: /health
     env: []
+    appSecrets: true
     resources:
       requests:
         cpu: 50m
@@ -119,16 +113,7 @@ services:
     env:
       - name: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "90"
-      - name: JWT_SECRET
-        valueFrom:
-          secretKeyRef:
-            name: app-secrets
-            key: JWT_SECRET
-      - name: MONGO_URI
-        valueFrom:
-          secretKeyRef:
-            name: app-secrets
-            key: MONGO_URI
+    appSecrets: true
     resources:
       requests:
         cpu: 100m
@@ -144,17 +129,8 @@ services:
     replicas: 1
     healthPath: /health
     ingressPath: /api/products
-    env:
-      - name: JWT_SECRET
-        valueFrom:
-          secretKeyRef:
-            name: app-secrets
-            key: JWT_SECRET
-      - name: MONGO_URI
-        valueFrom:
-          secretKeyRef:
-            name: app-secrets
-            key: MONGO_URI
+    env: []
+    appSecrets: true
     resources:
       requests:
         cpu: 100m
@@ -173,16 +149,7 @@ services:
     env:
       - name: CATALOG_URL
         value: http://catalog:8002
-      - name: JWT_SECRET
-        valueFrom:
-          secretKeyRef:
-            name: app-secrets
-            key: JWT_SECRET
-      - name: MONGO_URI
-        valueFrom:
-          secretKeyRef:
-            name: app-secrets
-            key: MONGO_URI
+    appSecrets: true
     resources:
       requests:
         cpu: 100m
@@ -209,16 +176,7 @@ services:
         value: "5.00"
       - name: FREE_SHIPPING_THRESHOLD
         value: "100"
-      - name: JWT_SECRET
-        valueFrom:
-          secretKeyRef:
-            name: app-secrets
-            key: JWT_SECRET
-      - name: MONGO_URI
-        valueFrom:
-          secretKeyRef:
-            name: app-secrets
-            key: MONGO_URI
+    appSecrets: true
     resources:
       requests:
         cpu: 100m
@@ -237,16 +195,7 @@ services:
     env:
       - name: PAYMENT_FAILURE_SUFFIX
         value: "0000"
-      - name: JWT_SECRET
-        valueFrom:
-          secretKeyRef:
-            name: app-secrets
-            key: JWT_SECRET
-      - name: MONGO_URI
-        valueFrom:
-          secretKeyRef:
-            name: app-secrets
-            key: MONGO_URI
+    appSecrets: true
     resources:
       requests:
         cpu: 100m

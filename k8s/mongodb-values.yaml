@@ -15,7 +15,7 @@ image:
 
 auth:
   # Key name required by this chart version: mongodb-root-password.
-  existingSecret: app-secrets
+  existingSecret: sports-store-app-secrets
 
 persistence:
   enabled: true

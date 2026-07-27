@@ -48,5 +48,51 @@ report `Ready=True`. If the store is not ready, inspect the ESO controller logs 
 confirm the EKS Pod Identity association and IAM permissions in the infrastructure
 repository.
 
-Application-level `ExternalSecret` resources and injecting generated Kubernetes
-Secrets into workloads are intentionally deferred to DEP-237.
+The application chart and raw manifests each include an `ExternalSecret` in the
+`sports-store` namespace. Use only the deployment path selected for the application;
+both synchronize `sports-store/production/config` into the same Kubernetes Secret,
+`sports-store-app-secrets`, every hour.
+
+## Verify application synchronization
+
+These checks display resource state and key names, never secret values:
+
+```bash
+kubectl wait externalsecret/sports-store-app-secrets \
+  --namespace sports-store \
+  --for=condition=Ready \
+  --timeout=120s
+
+kubectl get externalsecret sports-store-app-secrets -n sports-store
+kubectl get secret sports-store-app-secrets -n sports-store \
+  -o go-template='{{range $key, $_ := .data}}{{$key}}{{"\n"}}{{end}}'
+kubectl get secret sports-store-app-secrets -n sports-store \
+  -o jsonpath='{.metadata.ownerReferences[0].kind}{"/"}{.metadata.ownerReferences[0].name}{"\n"}'
+```
+
+The key list must include `MONGO_INITDB_ROOT_PASSWORD` and `JWT_SECRET_KEY`.
+The owner must be `ExternalSecret/sports-store-app-secrets`.
+
+After an authorized operator updates the AWS secret, request an immediate refresh
+and confirm the Kubernetes Secret's resource version changes. Do not print or decode
+the Secret during this check:
+
+```bash
+kubectl get secret sports-store-app-secrets -n sports-store \
+  -o jsonpath='{.metadata.resourceVersion}{"\n"}'
+kubectl annotate externalsecret sports-store-app-secrets -n sports-store \
+  force-sync="$(date +%s)" --overwrite
+kubectl wait externalsecret/sports-store-app-secrets -n sports-store \
+  --for=condition=Ready --timeout=120s
+kubectl get secret sports-store-app-secrets -n sports-store \
+  -o jsonpath='{.metadata.resourceVersion}{"\n"}'
+```
+
+To validate owner cleanup in a disposable environment, delete the `ExternalSecret`
+and confirm its generated Secret disappears. Reapply the raw manifest or run a Helm
+upgrade immediately afterward to restore it:
+
+```bash
+kubectl delete externalsecret sports-store-app-secrets -n sports-store
+kubectl wait --for=delete secret/sports-store-app-secrets -n sports-store --timeout=60s
+```

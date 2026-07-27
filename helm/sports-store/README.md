@@ -14,11 +14,17 @@ Same as Milestone 2: a running `sports-store` Minikube profile with the
 profile's Docker daemon (see `../../k8s/README.md` "Local images"). This
 chart does not build images or manage the namespace itself.
 
+External Secrets Operator and `ClusterSecretStore/aws-secrets-manager` must be
+ready before installation. The chart creates the application `ExternalSecret`;
+it does not install ESO or create/populate the AWS secret.
+
 ## Install
 
 ```bash
 helm dependency update .
 helm install sports-store . --namespace sports-store
+kubectl wait externalsecret/sports-store-app-secrets -n sports-store \
+  --for=condition=Ready --timeout=120s
 ```
 
 ## Upgrade / rollback / uninstall
@@ -64,12 +70,18 @@ manifests. `templates/_helpers.tpl`'s `sports-store.fullname` (the standard
 release-prefixed convention) exists for governance and is used for the one
 resource nothing else needs to resolve by a fixed name: the Ingress.
 
+**Secrets come from AWS Secrets Manager.** `templates/external-secret.yaml`
+synchronizes `sports-store/production/config` hourly. ESO owns the resulting
+`sports-store-app-secrets` Kubernetes Secret, and the six active backend workloads
+import it with `envFrom`. Compatibility keys for the current images and MongoDB
+are rendered by ESO in-cluster; values are never present in Helm values or output.
+
 **MongoDB's hostname is release-dependent.** As a subchart with alias
 `mongodb` under a parent release named `sports-store`, Bitnami's chart
 produces a Service named `sports-store-mongodb` (`<release>-<chart>`) —
 not the plain `mongodb` you'd get installing the chart standalone with a
 release name that equals the chart name (verified via `helm template`
-before wiring it into `templates/secret.yaml`'s `MONGO_URI`). If you
+before wiring it into the ExternalSecret template's `MONGO_URI`). If you
 install this chart under a different release name, `MONGO_URI` adjusts
 automatically (see `_helpers.tpl`'s `sports-store.mongoHost`).
 
