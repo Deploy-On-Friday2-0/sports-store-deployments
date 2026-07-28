@@ -17,6 +17,22 @@ zones, while smaller development clusters remain schedulable. The 7
 `../../k8s/README.md` "Local images"). This chart does not build images or
 manage the namespace itself.
 
+On EKS, the platform must install the AWS EBS CSI Driver and provide the
+`ebs-gp3-retain` StorageClass before this chart is deployed. Both are
+infrastructure-managed and are intentionally not rendered by this chart.
+Verify the prerequisite:
+
+```bash
+kubectl get csidriver ebs.csi.aws.com
+kubectl get pods --namespace kube-system \
+  -l app.kubernetes.io/name=aws-ebs-csi-driver
+kubectl get storageclass ebs-gp3-retain -o yaml
+```
+
+The StorageClass contract is `ebs.csi.aws.com`, gp3, encrypted, `Retain`,
+`WaitForFirstConsumer`, and expansion enabled. Do not deploy the EKS values
+until the CSI controller and node components are healthy.
+
 Create `app-secrets` before installing. This Secret is managed outside Helm
 so credentials never appear in committed values or rendered manifests. The
 ReplicaSet key must be shared by all members, and `MONGO_URI` must identify
@@ -47,7 +63,11 @@ the current Primary.
 
 ```bash
 helm dependency build .
+# Local cluster
 helm install sports-store . --namespace sports-store
+
+# EKS
+helm install sports-store . --namespace sports-store -f values-eks.yaml
 ```
 
 ## Upgrade / rollback / uninstall
@@ -56,6 +76,9 @@ helm install sports-store . --namespace sports-store
 # after editing values.yaml (or with -f a values override / --set)
 helm upgrade sports-store . --namespace sports-store
 
+# EKS upgrades must continue supplying the environment override
+helm upgrade sports-store . --namespace sports-store -f values-eks.yaml
+
 helm rollback sports-store <revision> --namespace sports-store
 
 helm uninstall sports-store --namespace sports-store
@@ -63,20 +86,27 @@ helm uninstall sports-store --namespace sports-store
 
 The MongoDB StatefulSet retains its per-member claims when scaled or deleted.
 Each member has a separate `ReadWriteOnce` volume; MongoDB replicates writes
-through its oplog. Helm rollback does not reverse a database migration.
+through its oplog. On EKS, the StorageClass's `Retain` reclaim policy also
+keeps the PV and EBS volume if a PVC is manually deleted. Helm rollback does
+not reverse a database or storage migration.
 
 ## Automated validation
 
 ```bash
 helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.3
 helm lint .
+helm lint . -f values-eks.yaml
 helm unittest --strict .
 ```
 
 The test renders the chart and verifies the three-member StatefulSet,
 ReplicaSet authentication Secret reference, absence of an arbiter, headless
 Service, independent PVC template, distribution constraints, PDB, and
-application Secret references.
+application Secret references. The EKS suite also verifies three replicas use
+the `ebs-gp3-retain` claim template with `ReadWriteOnce`, `8Gi`, and retained
+PVCs. Infrastructure tests own assertions for the external StorageClass's CSI
+provisioner, gp3 type, encryption, reclaim policy, delayed binding, and
+expansion settings.
 
 ## ReplicaSet verification and failover
 
@@ -106,17 +136,74 @@ kubectl exec --namespace sports-store sports-store-mongodb-0 -- \
 The PDB preserves two available members during voluntary disruptions. It
 cannot protect against simultaneous involuntary node failures.
 
-## Standalone data migration
+## EKS storage verification
 
-The previous standalone Deployment PVC is not adopted by the ReplicaSet
-StatefulSet. For an existing installation:
+Delayed binding means a claim can remain Pending until its MongoDB Pod is
+scheduled. After rollout, verify all three ordinal claims are Bound to
+different PVs:
+
+```bash
+kubectl get storageclass ebs-gp3-retain
+kubectl get pvc --namespace sports-store -o wide
+kubectl get pv
+kubectl get pods --namespace sports-store \
+  -l app.kubernetes.io/name=mongodb -o wide
+```
+
+Expected claims are `datadir-sports-store-mongodb-0`, `-1`, and `-2`. Each
+must use `ebs-gp3-retain`, have access mode `RWO`, and reference a distinct PV.
+For each PV, verify the CSI driver, retained lifecycle, EBS handle, and zonal
+node affinity:
+
+```bash
+kubectl get pv <pv-name> \
+  -o jsonpath='{.spec.csi.driver}{"\n"}{.spec.csi.volumeHandle}{"\n"}{.spec.persistentVolumeReclaimPolicy}{"\n"}{.spec.nodeAffinity}{"\n"}'
+
+aws ec2 describe-volumes --volume-ids <volume-id> \
+  --query 'Volumes[].{Id:VolumeId,Type:VolumeType,Encrypted:Encrypted,AZ:AvailabilityZone,Attachments:Attachments}'
+```
+
+Every volume must be gp3 and encrypted. Its Availability Zone must match the
+scheduled worker and the PV node affinity. Three MongoDB members must have
+three different EBS volume IDs; EBS volumes are never shared between members.
+
+## Retention test and recovery
+
+Perform this only in a non-production environment:
+
+1. Deploy with `values-eks.yaml`, write test data, and verify ReplicaSet health.
+2. Record all three PVC names, PV names, and `.spec.csi.volumeHandle` values.
+3. Run `helm uninstall sports-store --namespace sports-store`.
+4. Confirm the PVCs remain and each EBS volume still exists.
+5. Confirm any deliberately deleted PVC leaves its PV in `Released` with reclaim policy `Retain`.
+6. Reinstall with the same release name to reuse retained ordinal PVCs, then verify the data.
+
+A `Released` retained PV is not automatically reusable. Recovery requires an
+operator to validate the EBS volume, clear or recreate the PV claim binding as
+appropriate, and bind a replacement PVC with matching size, StorageClass,
+access mode, and Availability Zone. Cleanup is also manual: verify backups and
+the rollback window before deleting retained PVs and EBS volumes, which
+continue to incur AWS charges.
+
+## Existing storage migration
+
+Changing `mongodb.persistence.storageClass` does not migrate an existing PVC,
+and changing a deployed StatefulSet claim template can be rejected as
+immutable. The previous standalone Deployment PVC and existing `standard`
+StatefulSet claims are not automatically adopted as gp3 claims. For an
+existing installation:
 
 1. Stop application writes and create a verified logical backup with `mongodump`.
 2. Retain the standalone PVC for rollback; do not delete it.
-3. Deploy the ReplicaSet and wait for one Primary and two Secondaries.
+3. Deploy a new gp3-backed ReplicaSet/PVC set; do not delete or mutate the old claims automatically.
 4. Restore with `mongorestore` through the Primary or headless discovery URI.
 5. Compare collection counts and indexes, then run application read/write and failover checks.
 6. Remove the old PVC only after the rollback window has closed.
+
+EBS is Availability Zone-specific. Moving data to another zone requires a
+logical restore or EBS snapshot/restore workflow; an existing EBS volume
+cannot simply attach in a different zone. PVC expansion is supported by the
+StorageClass, but shrinking is not supported.
 
 ## Design notes
 

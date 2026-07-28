@@ -1,0 +1,10 @@
+# EKS-specific values. The infrastructure-managed StorageClass must exist
+# before this chart is installed; this chart does not install the EBS CSI
+# Driver or create cluster-scoped storage resources.
+mongodb:
+  persistence:
+    enabled: true
+    storageClass: ebs-gp3-retain
+    accessModes:
+      - ReadWriteOnce
+    size: 8Gi

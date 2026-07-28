@@ -1,0 +1,38 @@
+suite: MongoDB EKS persistence contract
+release:
+  name: sports-store
+  namespace: sports-store
+values:
+  - ../values-eks.yaml
+templates:
+  - charts/mongodb/templates/replicaset/statefulset.yaml
+tests:
+  - it: requests one dynamically provisioned gp3 claim per member
+    asserts:
+      - isKind:
+          of: StatefulSet
+      - equal:
+          path: spec.replicas
+          value: 3
+      - lengthEqual:
+          path: spec.volumeClaimTemplates
+          count: 1
+      - equal:
+          path: spec.volumeClaimTemplates[0].spec.storageClassName
+          value: ebs-gp3-retain
+      - equal:
+          path: spec.volumeClaimTemplates[0].spec.accessModes
+          value:
+            - ReadWriteOnce
+      - equal:
+          path: spec.volumeClaimTemplates[0].spec.resources.requests.storage
+          value: 8Gi
+
+  - it: retains claims when the StatefulSet is deleted or scaled down
+    asserts:
+      - equal:
+          path: spec.persistentVolumeClaimRetentionPolicy.whenDeleted
+          value: Retain
+      - equal:
+          path: spec.persistentVolumeClaimRetentionPolicy.whenScaled
+          value: Retain
