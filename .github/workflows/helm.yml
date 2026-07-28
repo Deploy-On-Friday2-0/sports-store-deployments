@@ -26,6 +26,7 @@ jobs:
       - name: Build chart dependencies
         working-directory: helm/sports-store
         run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
           helm dependency build .
           tar -xzf charts/mongodb-15.6.26.tgz -C charts
       - name: Lint chart

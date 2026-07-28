@@ -94,6 +94,7 @@ not reverse a database or storage migration.
 
 ```bash
 helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.3
+helm repo add bitnami https://charts.bitnami.com/bitnami
 helm dependency build .
 tar -xzf charts/mongodb-15.6.26.tgz -C charts
 helm lint .
