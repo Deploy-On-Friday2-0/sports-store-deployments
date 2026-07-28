@@ -1,0 +1,100 @@
+suite: MongoDB three-member ReplicaSet
+release:
+  name: sports-store
+  namespace: sports-store
+templates:
+  - charts/mongodb/templates/replicaset/statefulset.yaml
+  - charts/mongodb/templates/replicaset/headless-svc.yaml
+  - charts/mongodb/templates/replicaset/pdb.yaml
+  - charts/mongodb/templates/arbiter/statefulset.yaml
+tests:
+  - it: renders a three-member ReplicaSet StatefulSet
+    template: charts/mongodb/templates/replicaset/statefulset.yaml
+    asserts:
+      - isKind:
+          of: StatefulSet
+      - equal:
+          path: spec.replicas
+          value: 3
+      - equal:
+          path: spec.serviceName
+          value: sports-store-mongodb-headless
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MONGODB_REPLICA_SET_NAME
+            value: rs0
+
+  - it: references the shared ReplicaSet authentication Secret
+    template: charts/mongodb/templates/replicaset/statefulset.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MONGODB_REPLICA_SET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: sports-store-app-secrets
+                key: mongodb-replica-set-key
+
+  - it: creates an independent retained PVC for each StatefulSet ordinal
+    template: charts/mongodb/templates/replicaset/statefulset.yaml
+    asserts:
+      - lengthEqual:
+          path: spec.volumeClaimTemplates
+          count: 1
+      - equal:
+          path: spec.volumeClaimTemplates[0].spec.accessModes
+          value:
+            - ReadWriteOnce
+      - equal:
+          path: spec.volumeClaimTemplates[0].spec.resources.requests.storage
+          value: 8Gi
+      - equal:
+          path: spec.persistentVolumeClaimRetentionPolicy.whenScaled
+          value: Retain
+      - equal:
+          path: spec.persistentVolumeClaimRetentionPolicy.whenDeleted
+          value: Retain
+
+  - it: distributes members across workers and zones without blocking small clusters
+    template: charts/mongodb/templates/replicaset/statefulset.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey
+          value: kubernetes.io/hostname
+      - equal:
+          path: spec.template.spec.topologySpreadConstraints[0].topologyKey
+          value: topology.kubernetes.io/zone
+      - equal:
+          path: spec.template.spec.topologySpreadConstraints[0].whenUnsatisfiable
+          value: ScheduleAnyway
+
+  - it: creates a headless governing Service for stable member DNS
+    template: charts/mongodb/templates/replicaset/headless-svc.yaml
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: spec.clusterIP
+          value: None
+      - equal:
+          path: spec.publishNotReadyAddresses
+          value: true
+
+  - it: preserves quorum during voluntary disruptions
+    template: charts/mongodb/templates/replicaset/pdb.yaml
+    asserts:
+      - isKind:
+          of: PodDisruptionBudget
+      - equal:
+          path: spec.minAvailable
+          value: 2
+      - notExists:
+          path: spec.maxUnavailable
+
+  - it: does not render an arbiter
+    template: charts/mongodb/templates/arbiter/statefulset.yaml
+    asserts:
+      - hasDocuments:
+          count: 0

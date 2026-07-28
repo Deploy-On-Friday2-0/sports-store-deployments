@@ -46,14 +46,7 @@ the Deployment's pod template and its Service's selector so they match.
 app: {{ . }}
 {{- end -}}
 
-{{/*
-MongoDB's in-cluster hostname as a subchart dependency: Bitnami's fullname
-helper collapses to just the release name when release name == chart name
-(that's how DEP-159's standalone `helm install mongodb bitnami/mongodb`
-produced a plain "mongodb" Service). As a subchart under a differently
-named parent release, it's "<release>-mongodb" instead — verified via
-`helm template` against this exact chart before hardcoding it here.
-*/}}
+{{/* MongoDB ReplicaSet headless Service used as the driver discovery seed. */}}
 {{- define "sports-store.mongoHost" -}}
-{{- printf "%s-mongodb" .Release.Name -}}
+{{- printf "%s-mongodb-headless" .Release.Name -}}
 {{- end -}}

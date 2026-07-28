@@ -1,5 +1,6 @@
 # Values for the sports-store parent chart. Secrets are synchronized from AWS
 # Secrets Manager by templates/external-secret.yaml and never belong here.
+# Environment-specific resource settings belong in separate values files.
 
 imagePullPolicy: IfNotPresent
 
@@ -18,6 +19,9 @@ ingress:
 # Same settings verified working in DEP-159's standalone mongodb-values.yaml.
 # ---------------------------------------------------------------------
 mongodb:
+  architecture: replicaset
+  replicaSetName: rs0
+  replicaCount: 3
   # Bitnami stopped publishing pinned version tags (e.g. 7.0.14-debian-12-r3,
   # what chart 15.6.26 expects) to the free docker.io/bitnami/mongodb
   # catalog — only :latest remains there. bitnamilegacy is Bitnami's own
@@ -25,16 +29,35 @@ mongodb:
   image:
     repository: bitnamilegacy/mongodb
   auth:
-    # The ExternalSecret provides the key name required by this chart version.
+    enabled: true
+    # Must contain mongodb-root-password and mongodb-replica-set-key.
+    # The ExternalSecret synchronizes both keys from AWS Secrets Manager.
     existingSecret: sports-store-app-secrets
+  arbiter:
+    enabled: false
+  # Prefer different workers and zones without blocking small dev clusters.
+  podAntiAffinityPreset: soft
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/instance: "{{ .Release.Name }}"
+          app.kubernetes.io/component: mongodb
+  pdb:
+    create: true
+    minAvailable: 2
   persistence:
     enabled: true
     storageClass: standard
+    accessModes:
+      - ReadWriteOnce
     size: 8Gi
-    # Survives `helm uninstall` so a reinstall reattaches to the same data
-    # instead of losing it — see helm/sports-store/README.md's lifecycle
-    # notes for what this does and doesn't cover.
-    resourcePolicy: keep
+  persistentVolumeClaimRetentionPolicy:
+    enabled: true
+    whenScaled: Retain
+    whenDeleted: Retain
   extraVolumes:
     - name: init-mongo-script
       configMap:
