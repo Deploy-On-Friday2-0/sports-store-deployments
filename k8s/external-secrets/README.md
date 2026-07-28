@@ -70,8 +70,16 @@ kubectl get secret sports-store-app-secrets -n sports-store \
   -o jsonpath='{.metadata.ownerReferences[0].kind}{"/"}{.metadata.ownerReferences[0].name}{"\n"}'
 ```
 
-The key list must include `MONGO_INITDB_ROOT_PASSWORD` and `JWT_SECRET_KEY`.
+The key list must contain only `MONGO_URI`, `JWT_SECRET`, and
+`mongodb-root-password`. The AWS property names are intentionally not copied into
+the generated Secret as duplicate keys.
 The owner must be `ExternalSecret/sports-store-app-secrets`.
+
+Redis is reserved as a separate least-privilege boundary. When Redis is added,
+create `REDIS_PASSWORD` in AWS Secrets Manager and synchronize it into a dedicated
+`sports-store-redis-secrets` Secret under the `redis-password` key. Until then,
+auth and cart use optional references to that future Secret; do not commit a fake
+placeholder value.
 
 After an authorized operator updates the AWS secret, request an immediate refresh
 and confirm the Kubernetes Secret's resource version changes. Do not print or decode

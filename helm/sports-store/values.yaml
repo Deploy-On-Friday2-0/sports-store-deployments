@@ -94,7 +94,6 @@ services:
     replicas: 1
     healthPath: /health
     env: []
-    appSecrets: true
     resources:
       requests:
         cpu: 50m
@@ -113,7 +112,22 @@ services:
     env:
       - name: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "90"
-    appSecrets: true
+      - name: MONGO_URI
+        valueFrom:
+          secretKeyRef:
+            name: sports-store-app-secrets
+            key: MONGO_URI
+      - name: JWT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: sports-store-app-secrets
+            key: JWT_SECRET
+      - name: REDIS_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: sports-store-redis-secrets
+            key: redis-password
+            optional: true
     resources:
       requests:
         cpu: 100m
@@ -129,8 +143,12 @@ services:
     replicas: 1
     healthPath: /health
     ingressPath: /api/products
-    env: []
-    appSecrets: true
+    env:
+      - name: MONGO_URI
+        valueFrom:
+          secretKeyRef:
+            name: sports-store-app-secrets
+            key: MONGO_URI
     resources:
       requests:
         cpu: 100m
@@ -149,7 +167,17 @@ services:
     env:
       - name: CATALOG_URL
         value: http://catalog:8002
-    appSecrets: true
+      - name: MONGO_URI
+        valueFrom:
+          secretKeyRef:
+            name: sports-store-app-secrets
+            key: MONGO_URI
+      - name: REDIS_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: sports-store-redis-secrets
+            key: redis-password
+            optional: true
     resources:
       requests:
         cpu: 100m
@@ -176,7 +204,11 @@ services:
         value: "5.00"
       - name: FREE_SHIPPING_THRESHOLD
         value: "100"
-    appSecrets: true
+      - name: MONGO_URI
+        valueFrom:
+          secretKeyRef:
+            name: sports-store-app-secrets
+            key: MONGO_URI
     resources:
       requests:
         cpu: 100m
@@ -195,7 +227,11 @@ services:
     env:
       - name: PAYMENT_FAILURE_SUFFIX
         value: "0000"
-    appSecrets: true
+      - name: MONGO_URI
+        valueFrom:
+          secretKeyRef:
+            name: sports-store-app-secrets
+            key: MONGO_URI
     resources:
       requests:
         cpu: 100m

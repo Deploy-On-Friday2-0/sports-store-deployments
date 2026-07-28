@@ -87,9 +87,13 @@ pod that tried to run privileged regardless of what any Deployment spec says.
 
 `01-external-secret.yaml` synchronizes the production application configuration
 from AWS Secrets Manager through `ClusterSecretStore/aws-secrets-manager`. ESO owns
-the generated `sports-store-app-secrets` Secret. The six active backend workloads
-import it with `envFrom`, while MongoDB uses the compatibility key required by the
-Bitnami chart. No secret values are stored in these manifests.
+the generated `sports-store-app-secrets` Secret. Workloads use explicit
+`secretKeyRef` entries: auth receives `MONGO_URI` and `JWT_SECRET`; cart, catalog,
+order, and payment receive only `MONGO_URI`; gateway and frontend receive none.
+MongoDB selects only the `mongodb-root-password` key required by the Bitnami chart.
+Auth and cart have optional references to the future `sports-store-redis-secrets`
+Secret, so no placeholder credential is stored in Git and the pods can start until
+the AWS `REDIS_PASSWORD` property and Redis workload are introduced.
 
 ## MongoDB readiness
 

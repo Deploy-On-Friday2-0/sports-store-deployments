@@ -92,9 +92,6 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
-          envFrom:
-            - secretRef:
-                name: sports-store-app-secrets
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
@@ -149,9 +146,22 @@ spec:
           env:
             - name: ACCESS_TOKEN_EXPIRE_MINUTES
               value: "60"
-          envFrom:
-            - secretRef:
-                name: sports-store-app-secrets
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: sports-store-app-secrets
+                  key: MONGO_URI
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: sports-store-app-secrets
+                  key: JWT_SECRET
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sports-store-redis-secrets
+                  key: redis-password
+                  optional: true
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
@@ -203,9 +213,12 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8002
-          envFrom:
-            - secretRef:
-                name: sports-store-app-secrets
+          env:
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: sports-store-app-secrets
+                  key: MONGO_URI
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
@@ -260,9 +273,17 @@ spec:
           env:
             - name: CATALOG_URL
               value: http://catalog:8002
-          envFrom:
-            - secretRef:
-                name: sports-store-app-secrets
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: sports-store-app-secrets
+                  key: MONGO_URI
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sports-store-redis-secrets
+                  key: redis-password
+                  optional: true
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
@@ -325,9 +346,11 @@ spec:
               value: "5.00"
             - name: FREE_SHIPPING_THRESHOLD
               value: "100"
-          envFrom:
-            - secretRef:
-                name: sports-store-app-secrets
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: sports-store-app-secrets
+                  key: MONGO_URI
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
@@ -382,9 +405,11 @@ spec:
           env:
             - name: PAYMENT_FAILURE_SUFFIX
               value: "0000"
-          envFrom:
-            - secretRef:
-                name: sports-store-app-secrets
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: sports-store-app-secrets
+                  key: MONGO_URI
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001

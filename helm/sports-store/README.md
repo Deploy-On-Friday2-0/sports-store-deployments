@@ -72,9 +72,12 @@ resource nothing else needs to resolve by a fixed name: the Ingress.
 
 **Secrets come from AWS Secrets Manager.** `templates/external-secret.yaml`
 synchronizes `sports-store/production/config` hourly. ESO owns the resulting
-`sports-store-app-secrets` Kubernetes Secret, and the six active backend workloads
-import it with `envFrom`. Compatibility keys for the current images and MongoDB
-are rendered by ESO in-cluster; values are never present in Helm values or output.
+`sports-store-app-secrets` Kubernetes Secret. Explicit `secretKeyRef` entries give
+auth `MONGO_URI` and `JWT_SECRET`, give cart/catalog/order/payment only `MONGO_URI`,
+and give gateway/frontend no secrets. MongoDB selects only its
+`mongodb-root-password` key. Auth and cart also declare optional references to the
+future `sports-store-redis-secrets` Secret; no fake Redis credential is rendered
+before the AWS `REDIS_PASSWORD` property and Redis workload exist.
 
 **MongoDB's hostname is release-dependent.** As a subchart with alias
 `mongodb` under a parent release named `sports-store`, Bitnami's chart
