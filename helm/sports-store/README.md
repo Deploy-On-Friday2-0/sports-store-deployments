@@ -9,10 +9,10 @@ newer, DRY path.
 ## Prerequisites
 
 A Kubernetes cluster with the `sports-store` namespace already created
-(`kubectl apply -f ../../k8s/00-namespace.yaml`) is required. MongoDB uses
-preferred hostname anti-affinity and preferred zone spreading. Production
-clusters should provide at least three schedulable workers across multiple
-zones, while smaller development clusters remain schedulable. The 7
+(`kubectl apply -f ../../k8s/00-namespace.yaml`) is required. Base values use
+preferred distribution so smaller development clusters remain schedulable.
+EKS values require one MongoDB member in each of three distinct Availability
+Zones. The 7
 `:v1.0.0` application images must also be available (see
 `../../k8s/README.md` "Local images"). This chart does not build images or
 manage the namespace itself.
@@ -27,11 +27,17 @@ kubectl get csidriver ebs.csi.aws.com
 kubectl get pods --namespace kube-system \
   -l app.kubernetes.io/name=aws-ebs-csi-driver
 kubectl get storageclass ebs-gp3-retain -o yaml
+kubectl get nodes -L topology.kubernetes.io/zone
 ```
 
 The StorageClass contract is `ebs.csi.aws.com`, gp3, encrypted, `Retain`,
 `WaitForFirstConsumer`, and expansion enabled. Do not deploy the EKS values
 until the CSI controller and node components are healthy.
+The EKS node groups must provide eligible capacity in at least three zones,
+and every eligible node must carry the standard
+`topology.kubernetes.io/zone` label. Hard zone anti-affinity intentionally
+leaves MongoDB Pods Pending rather than colocating members when fewer than
+three zones are available.
 
 External Secrets Operator and `ClusterSecretStore/aws-secrets-manager` must be
 ready before installation. The chart creates the application `ExternalSecret`;
@@ -137,10 +143,20 @@ kubectl get pvc --namespace sports-store -o wide
 kubectl get pv
 kubectl get pods --namespace sports-store \
   -l app.kubernetes.io/name=mongodb -o wide
+kubectl get nodes -L topology.kubernetes.io/zone
 ```
 
 Expected claims are `datadir-sports-store-mongodb-0`, `-1`, and `-2`. Each
 must use `ebs-gp3-retain`, have access mode `RWO`, and reference a distinct PV.
+Cross-reference each Pod's `NODE` with the node listing and confirm the three
+nodes have three different zone values. If a member is Pending, inspect its
+scheduling events before storage because required zone anti-affinity runs
+before the delayed EBS volume is provisioned:
+
+```bash
+kubectl describe pod <pending-mongodb-pod> --namespace sports-store
+```
+
 For each PV, verify the CSI driver, retained lifecycle, EBS handle, and zonal
 node affinity:
 
