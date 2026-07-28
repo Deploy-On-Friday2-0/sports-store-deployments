@@ -11,3 +11,7 @@ dependencies:
     version: 15.6.26
     repository: https://charts.bitnami.com/bitnami
     alias: mongodb
+  - name: redis
+    version: 18.6.1
+    repository: https://charts.bitnami.com/bitnami
+    alias: redis
