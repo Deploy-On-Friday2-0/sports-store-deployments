@@ -1,7 +1,7 @@
 # Values for the sports-store parent chart. Environment-specific overrides
-# (real secrets, resource sizing, replica counts) belong in a separate
-# -f values file per environment — everything here is safe local-cluster
-# defaults, same spirit as the raw k8s/01-secrets.yaml placeholder creds.
+# (resource sizing and application replica counts) belong in a separate
+# -f values file per environment. Credentials are supplied through the
+# pre-created app-secrets Secret and never enter Helm values.
 
 imagePullPolicy: IfNotPresent
 
@@ -9,10 +9,6 @@ containerSecurityContext:
   runAsNonRoot: true
   runAsUser: 10001
   allowPrivilegeEscalation: false
-
-secrets:
-  jwtSecret: dev-secret-change-me
-  mongoRootPassword: dev-mongo-pw-change-me
 
 ingress:
   enabled: true
@@ -24,6 +20,9 @@ ingress:
 # Same settings verified working in DEP-159's standalone mongodb-values.yaml.
 # ---------------------------------------------------------------------
 mongodb:
+  architecture: replicaset
+  replicaSetName: rs0
+  replicaCount: 3
   # Bitnami stopped publishing pinned version tags (e.g. 7.0.14-debian-12-r3,
   # what chart 15.6.26 expects) to the free docker.io/bitnami/mongodb
   # catalog — only :latest remains there. bitnamilegacy is Bitnami's own
@@ -31,17 +30,35 @@ mongodb:
   image:
     repository: bitnamilegacy/mongodb
   auth:
-    # Key name required by this chart version: mongodb-root-password —
-    # provided by this chart's own templates/secret.yaml.
+    enabled: true
+    # Must contain mongodb-root-password and mongodb-replica-set-key.
+    # It is provisioned outside Helm so credentials are never rendered.
     existingSecret: app-secrets
+  arbiter:
+    enabled: false
+  # Prefer different workers and zones without blocking small dev clusters.
+  podAntiAffinityPreset: soft
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/instance: "{{ .Release.Name }}"
+          app.kubernetes.io/component: mongodb
+  pdb:
+    create: true
+    minAvailable: 2
   persistence:
     enabled: true
     storageClass: standard
+    accessModes:
+      - ReadWriteOnce
     size: 8Gi
-    # Survives `helm uninstall` so a reinstall reattaches to the same data
-    # instead of losing it — see helm/sports-store/README.md's lifecycle
-    # notes for what this does and doesn't cover.
-    resourcePolicy: keep
+  persistentVolumeClaimRetentionPolicy:
+    enabled: true
+    whenScaled: Retain
+    whenDeleted: Retain
   extraVolumes:
     - name: init-mongo-script
       configMap:

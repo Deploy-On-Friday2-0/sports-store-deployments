@@ -1,0 +1,81 @@
+suite: Application MongoDB connectivity
+release:
+  name: sports-store
+  namespace: sports-store
+templates:
+  - templates/deployment.yaml
+tests:
+  - it: references the externally managed ReplicaSet URI
+    template: templates/deployment.yaml
+    documentSelector:
+      path: metadata.name
+      value: auth
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MONGO_URI
+            valueFrom:
+              secretKeyRef:
+                name: app-secrets
+                key: MONGO_URI
+
+  - it: provides the ReplicaSet URI to catalog
+    template: templates/deployment.yaml
+    documentSelector:
+      path: metadata.name
+      value: catalog
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MONGO_URI
+            valueFrom:
+              secretKeyRef:
+                name: app-secrets
+                key: MONGO_URI
+
+  - it: provides the ReplicaSet URI to cart
+    template: templates/deployment.yaml
+    documentSelector:
+      path: metadata.name
+      value: cart
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MONGO_URI
+            valueFrom:
+              secretKeyRef:
+                name: app-secrets
+                key: MONGO_URI
+
+  - it: provides the ReplicaSet URI to order
+    template: templates/deployment.yaml
+    documentSelector:
+      path: metadata.name
+      value: order
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MONGO_URI
+            valueFrom:
+              secretKeyRef:
+                name: app-secrets
+                key: MONGO_URI
+
+  - it: provides the ReplicaSet URI to payment
+    template: templates/deployment.yaml
+    documentSelector:
+      path: metadata.name
+      value: payment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MONGO_URI
+            valueFrom:
+              secretKeyRef:
+                name: app-secrets
+                key: MONGO_URI
