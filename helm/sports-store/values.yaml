@@ -262,3 +262,36 @@ services:
       limits:
         cpu: 250m
         memory: 256Mi
+
+redis:
+  architecture: replication
+  auth:
+    enabled: true
+    existingSecret: sports-store-app-secrets
+    existingSecretPasswordKey: redis-password
+  sentinel:
+    enabled: true
+    masterSet: mymaster
+  master:
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                    - redis
+            topologyKey: topology.kubernetes.io/zone
+  replica:
+    replicaCount: 3
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                    - redis
+            topologyKey: topology.kubernetes.io/zone
