@@ -11,5 +11,6 @@ GitOps source of truth for deploying the Sports Store platform.
 - Observability configuration
 
 See `k8s/README.md` for the raw-manifest layout and apply order (Milestone 2),
-and `helm/sports-store/README.md` for the parent Helm chart (Milestone 3).
+`helm/sports-store/README.md` for the parent Helm chart (Milestone 3), and
+`k8s/external-secrets/README.md` for the External Secrets Operator deployment.
 Application source and cloud infrastructure do not belong in this repository.
