@@ -10,7 +10,7 @@ observability) all assume that name, so don't rename it.
 ```text
 k8s/
 ├── 00-namespace.yaml           # Namespace sports-store, PSA baseline enforcement
-├── 01-secrets.yaml             # JWT_SECRET, MONGO_URI, mongo root password
+├── 01-external-secret.yaml     # AWS Secrets Manager synchronization
 ├── 01-mongodb-init-configmap.yaml   # generated from seed/init-mongo.js, verbatim
 ├── mongodb-values.yaml         # Bitnami MongoDB Helm chart values
 ├── 02-services.yaml            # ClusterIP Services for all 7 microservices
@@ -85,13 +85,15 @@ them. `00-namespace.yaml` additionally labels the namespace
 `pod-security.kubernetes.io/enforce: baseline`, so the cluster itself would reject a
 pod that tried to run privileged regardless of what any Deployment spec says.
 
-`01-secrets.yaml` holds `JWT_SECRET`, `MONGO_URI` (shared across all 5 backends —
-each picks its own database by name in code, see `services/*/database.py`), and
-`mongodb-root-password` (the exact key name the Bitnami chart's `auth.existingSecret`
-expects). All three are placeholder dev values, base64-encoded in the committed
-YAML — rotate before any non-local use. App Deployments inject `JWT_SECRET` and
-`MONGO_URI` via `secretKeyRef`; MongoDB gets `mongodb-root-password` the same way,
-indirectly, through the chart's `auth.existingSecret`.
+`01-external-secret.yaml` synchronizes the production application configuration
+from AWS Secrets Manager through `ClusterSecretStore/aws-secrets-manager`. ESO owns
+the generated `sports-store-app-secrets` Secret. Workloads use explicit
+`secretKeyRef` entries: auth receives `MONGO_URI` and `JWT_SECRET`; cart, catalog,
+order, and payment receive only `MONGO_URI`; gateway and frontend receive none.
+MongoDB selects only the `mongodb-root-password` key required by the Bitnami chart.
+Auth and cart have optional references to the future `sports-store-redis-secrets`
+Secret, so no placeholder credential is stored in Git and the pods can start until
+the AWS `REDIS_PASSWORD` property and Redis workload are introduced.
 
 ## MongoDB readiness
 
@@ -107,8 +109,10 @@ fails and self-heals on the next one, without needing the pod to restart.
 ```bash
 kubectl apply -f k8s/00-namespace.yaml
 
-# Secret first — the mongo Helm release and every app Deployment reference it.
-kubectl apply -n sports-store -f k8s/01-secrets.yaml
+# ESO and ClusterSecretStore installation must already be complete.
+kubectl apply -n sports-store -f k8s/01-external-secret.yaml
+kubectl wait externalsecret/sports-store-app-secrets -n sports-store \
+  --for=condition=Ready --timeout=120s
 kubectl apply -n sports-store -f k8s/01-mongodb-init-configmap.yaml
 
 helm repo add bitnami https://charts.bitnami.com/bitnami
@@ -121,4 +125,11 @@ helm upgrade --install mongodb bitnami/mongodb \
 kubectl apply -n sports-store -f k8s/02-services.yaml
 kubectl apply -n sports-store -f k8s/03-deployments.yaml
 kubectl apply -n sports-store -f k8s/04-ingress.yaml
+
+kubectl rollout status deployment/gateway -n sports-store
+kubectl rollout status deployment/auth -n sports-store
+kubectl rollout status deployment/catalog -n sports-store
+kubectl rollout status deployment/cart -n sports-store
+kubectl rollout status deployment/order -n sports-store
+kubectl rollout status deployment/payment -n sports-store
 ```
