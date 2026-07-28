@@ -34,7 +34,7 @@ tests:
             name: MONGODB_REPLICA_SET_KEY
             valueFrom:
               secretKeyRef:
-                name: app-secrets
+                name: sports-store-app-secrets
                 key: mongodb-replica-set-key
 
   - it: creates an independent retained PVC for each StatefulSet ordinal

@@ -45,3 +45,8 @@ the Deployment's pod template and its Service's selector so they match.
 {{- define "sports-store.selectorLabels" -}}
 app: {{ . }}
 {{- end -}}
+
+{{/* MongoDB ReplicaSet headless Service used as the driver discovery seed. */}}
+{{- define "sports-store.mongoHost" -}}
+{{- printf "%s-mongodb-headless" .Release.Name -}}
+{{- end -}}

@@ -33,31 +33,14 @@ The StorageClass contract is `ebs.csi.aws.com`, gp3, encrypted, `Retain`,
 `WaitForFirstConsumer`, and expansion enabled. Do not deploy the EKS values
 until the CSI controller and node components are healthy.
 
-Create `app-secrets` before installing. This Secret is managed outside Helm
-so credentials never appear in committed values or rendered manifests. The
-ReplicaSet key must be shared by all members, and `MONGO_URI` must identify
-the ReplicaSet. The following example generates credentials in the current
-shell; use the platform secret manager in shared environments:
-
-```bash
-MONGODB_ROOT_PASSWORD="$(openssl rand -hex 24)"
-MONGODB_REPLICA_SET_KEY="$(openssl rand -hex 64)"
-JWT_SECRET="$(openssl rand -hex 32)"
-MONGO_URI="mongodb://root:${MONGODB_ROOT_PASSWORD}@sports-store-mongodb-headless:27017/?authSource=admin&replicaSet=rs0"
-
-kubectl create secret generic app-secrets \
-  --namespace sports-store \
-  --from-literal=JWT_SECRET="$JWT_SECRET" \
-  --from-literal=MONGO_URI="$MONGO_URI" \
-  --from-literal=mongodb-root-password="$MONGODB_ROOT_PASSWORD" \
-  --from-literal=mongodb-replica-set-key="$MONGODB_REPLICA_SET_KEY"
-unset MONGODB_ROOT_PASSWORD MONGODB_REPLICA_SET_KEY JWT_SECRET MONGO_URI
-```
-
-If the release name is not `sports-store`, replace the URI host with
-`<release>-mongodb-headless`. The headless Service is a discovery seed; the
-MongoDB driver discovers each member's stable StatefulSet DNS identity and
-the current Primary.
+External Secrets Operator and `ClusterSecretStore/aws-secrets-manager` must be
+ready before installation. The chart creates the application `ExternalSecret`;
+it does not install ESO or create/populate the AWS secret. The AWS secret
+`sports-store/production/config` must contain `MONGO_INITDB_ROOT_PASSWORD`,
+`MONGODB_REPLICA_SET_KEY`, and `JWT_SECRET_KEY`. ESO synchronizes them into
+`sports-store-app-secrets`; credentials never enter Helm values or rendered
+manifests. The generated `MONGO_URI` uses the release-specific headless Service
+and `replicaSet=rs0`, allowing the driver to discover the current Primary.
 
 ## Install
 
@@ -68,6 +51,9 @@ helm install sports-store . --namespace sports-store
 
 # EKS
 helm install sports-store . --namespace sports-store -f values-eks.yaml
+
+kubectl wait externalsecret/sports-store-app-secrets -n sports-store \
+  --for=condition=Ready --timeout=120s
 ```
 
 ## Upgrade / rollback / uninstall
@@ -118,7 +104,7 @@ kubectl get statefulset --namespace sports-store
 kubectl get pods --namespace sports-store -l app.kubernetes.io/name=mongodb -o wide
 kubectl get pvc --namespace sports-store
 
-MONGODB_ROOT_PASSWORD="$(kubectl get secret app-secrets --namespace sports-store \
+MONGODB_ROOT_PASSWORD="$(kubectl get secret sports-store-app-secrets --namespace sports-store \
   -o jsonpath='{.data.mongodb-root-password}' | base64 --decode)"
 kubectl exec --namespace sports-store sports-store-mongodb-0 -- \
   mongosh --quiet --username root --password "$MONGODB_ROOT_PASSWORD" \
@@ -219,10 +205,20 @@ manifests. `templates/_helpers.tpl`'s `sports-store.fullname` (the standard
 release-prefixed convention) exists for governance and is used for the one
 resource nothing else needs to resolve by a fixed name: the Ingress.
 
+**Secrets come from AWS Secrets Manager.** `templates/external-secret.yaml`
+synchronizes `sports-store/production/config` hourly. ESO owns the resulting
+`sports-store-app-secrets` Kubernetes Secret. Explicit `secretKeyRef` entries give
+auth `MONGO_URI` and `JWT_SECRET`, give cart/catalog/order/payment only `MONGO_URI`,
+and give gateway/frontend no secrets. MongoDB selects only its
+`mongodb-root-password` and `mongodb-replica-set-key` keys. Auth and cart also
+declare optional references to the future `sports-store-redis-secrets` Secret;
+no fake Redis credential is rendered before the AWS `REDIS_PASSWORD` property
+and Redis workload exist.
+
 **MongoDB's hostname is release-dependent.** ReplicaSet mode creates the
 headless Service `<release>-mongodb-headless`. Pods advertise stable names
-such as `<release>-mongodb-0.<release>-mongodb-headless`; the external
-`app-secrets` Secret must use the matching Service name in `MONGO_URI`.
+such as `<release>-mongodb-0.<release>-mongodb-headless`; the ExternalSecret
+generates `MONGO_URI` from the matching Service and ReplicaSet name.
 
 **No separate seeding Job.** MongoDB's own container entrypoint already
 runs any `*.js` file under `/docker-entrypoint-initdb.d/` exactly once,

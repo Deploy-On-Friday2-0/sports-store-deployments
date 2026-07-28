@@ -4,7 +4,27 @@ release:
   namespace: sports-store
 templates:
   - templates/deployment.yaml
+  - templates/external-secret.yaml
 tests:
+  - it: synchronizes ReplicaSet credentials and a discovery URI from AWS
+    template: templates/external-secret.yaml
+    asserts:
+      - equal:
+          path: spec.target.name
+          value: sports-store-app-secrets
+      - exists:
+          path: spec.target.template.data.mongodb-replica-set-key
+      - matchRegex:
+          path: spec.target.template.data.MONGO_URI
+          pattern: '@sports-store-mongodb-headless:27017/\?authSource=admin&replicaSet=rs0$'
+      - contains:
+          path: spec.data
+          content:
+            secretKey: mongoReplicaSetKey
+            remoteRef:
+              key: sports-store/production/config
+              property: MONGODB_REPLICA_SET_KEY
+
   - it: references the externally managed ReplicaSet URI
     template: templates/deployment.yaml
     documentSelector:
@@ -17,7 +37,7 @@ tests:
             name: MONGO_URI
             valueFrom:
               secretKeyRef:
-                name: app-secrets
+                name: sports-store-app-secrets
                 key: MONGO_URI
 
   - it: provides the ReplicaSet URI to catalog
@@ -32,7 +52,7 @@ tests:
             name: MONGO_URI
             valueFrom:
               secretKeyRef:
-                name: app-secrets
+                name: sports-store-app-secrets
                 key: MONGO_URI
 
   - it: provides the ReplicaSet URI to cart
@@ -47,7 +67,7 @@ tests:
             name: MONGO_URI
             valueFrom:
               secretKeyRef:
-                name: app-secrets
+                name: sports-store-app-secrets
                 key: MONGO_URI
 
   - it: provides the ReplicaSet URI to order
@@ -62,7 +82,7 @@ tests:
             name: MONGO_URI
             valueFrom:
               secretKeyRef:
-                name: app-secrets
+                name: sports-store-app-secrets
                 key: MONGO_URI
 
   - it: provides the ReplicaSet URI to payment
@@ -77,5 +97,5 @@ tests:
             name: MONGO_URI
             valueFrom:
               secretKeyRef:
-                name: app-secrets
+                name: sports-store-app-secrets
                 key: MONGO_URI

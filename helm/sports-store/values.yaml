@@ -1,7 +1,6 @@
-# Values for the sports-store parent chart. Environment-specific overrides
-# (resource sizing and application replica counts) belong in a separate
-# -f values file per environment. Credentials are supplied through the
-# pre-created app-secrets Secret and never enter Helm values.
+# Values for the sports-store parent chart. Secrets are synchronized from AWS
+# Secrets Manager by templates/external-secret.yaml and never belong here.
+# Environment-specific resource settings belong in separate values files.
 
 imagePullPolicy: IfNotPresent
 
@@ -32,8 +31,8 @@ mongodb:
   auth:
     enabled: true
     # Must contain mongodb-root-password and mongodb-replica-set-key.
-    # It is provisioned outside Helm so credentials are never rendered.
-    existingSecret: app-secrets
+    # The ExternalSecret synchronizes both keys from AWS Secrets Manager.
+    existingSecret: sports-store-app-secrets
   arbiter:
     enabled: false
   # Prefer different workers and zones without blocking small dev clusters.
@@ -136,16 +135,22 @@ services:
     env:
       - name: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "90"
-      - name: JWT_SECRET
-        valueFrom:
-          secretKeyRef:
-            name: app-secrets
-            key: JWT_SECRET
       - name: MONGO_URI
         valueFrom:
           secretKeyRef:
-            name: app-secrets
+            name: sports-store-app-secrets
             key: MONGO_URI
+      - name: JWT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: sports-store-app-secrets
+            key: JWT_SECRET
+      - name: REDIS_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: sports-store-redis-secrets
+            key: redis-password
+            optional: true
     resources:
       requests:
         cpu: 100m
@@ -162,15 +167,10 @@ services:
     healthPath: /health
     ingressPath: /api/products
     env:
-      - name: JWT_SECRET
-        valueFrom:
-          secretKeyRef:
-            name: app-secrets
-            key: JWT_SECRET
       - name: MONGO_URI
         valueFrom:
           secretKeyRef:
-            name: app-secrets
+            name: sports-store-app-secrets
             key: MONGO_URI
     resources:
       requests:
@@ -190,16 +190,17 @@ services:
     env:
       - name: CATALOG_URL
         value: http://catalog:8002
-      - name: JWT_SECRET
-        valueFrom:
-          secretKeyRef:
-            name: app-secrets
-            key: JWT_SECRET
       - name: MONGO_URI
         valueFrom:
           secretKeyRef:
-            name: app-secrets
+            name: sports-store-app-secrets
             key: MONGO_URI
+      - name: REDIS_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: sports-store-redis-secrets
+            key: redis-password
+            optional: true
     resources:
       requests:
         cpu: 100m
@@ -226,15 +227,10 @@ services:
         value: "5.00"
       - name: FREE_SHIPPING_THRESHOLD
         value: "100"
-      - name: JWT_SECRET
-        valueFrom:
-          secretKeyRef:
-            name: app-secrets
-            key: JWT_SECRET
       - name: MONGO_URI
         valueFrom:
           secretKeyRef:
-            name: app-secrets
+            name: sports-store-app-secrets
             key: MONGO_URI
     resources:
       requests:
@@ -254,15 +250,10 @@ services:
     env:
       - name: PAYMENT_FAILURE_SUFFIX
         value: "0000"
-      - name: JWT_SECRET
-        valueFrom:
-          secretKeyRef:
-            name: app-secrets
-            key: JWT_SECRET
       - name: MONGO_URI
         valueFrom:
           secretKeyRef:
-            name: app-secrets
+            name: sports-store-app-secrets
             key: MONGO_URI
     resources:
       requests:
