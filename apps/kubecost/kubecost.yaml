@@ -17,7 +17,10 @@ spec:
       values: |
         global:
           prometheus:
+            # Set to false only after global.prometheus.fqdn is set to a
+            # verified, Kubecost-compatible in-cluster Prometheus endpoint.
             enabled: true
+            # fqdn: https://verified-prometheus-endpoint.example.invalid
           grafana:
             enabled: false
 
@@ -66,7 +69,10 @@ spec:
           enabled: false
 
         persistentVolume:
-          enabled: false
+          enabled: true
+          size: 10Gi
+          # Omit storageClass to use the cluster's default StorageClass.
+          # storageClass: verified-storage-class
 
         service:
           type: ClusterIP
@@ -77,7 +83,10 @@ spec:
               external_labels:
                 cluster_id: sports-store-cluster
             persistentVolume:
-              enabled: false
+              enabled: true
+              size: 20Gi
+              # Omit storageClass to use the cluster's default StorageClass.
+              # storageClass: verified-storage-class
             resources:
               requests:
                 cpu: 100m
