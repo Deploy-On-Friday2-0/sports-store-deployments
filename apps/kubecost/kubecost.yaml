@@ -1,0 +1,97 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubecost
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: kubecost
+    app.kubernetes.io/part-of: sports-store
+spec:
+  project: default
+  source:
+    repoURL: https://kubecost.github.io/cost-analyzer/
+    chart: cost-analyzer
+    targetRevision: 2.8.7
+    helm:
+      releaseName: kubecost
+      values: |
+        global:
+          prometheus:
+            enabled: true
+          grafana:
+            enabled: false
+
+        kubecostProductConfigs:
+          clusterName: sports-store-cluster
+          defaultIdle: true
+          sharedNamespaces: "kube-system,kubecost"
+          shareTenancyCosts: true
+
+        kubecostFrontend:
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+
+        kubecostModel:
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 750m
+              memory: 1Gi
+
+        kubecostAggregator:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          cloudCost:
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+              limits:
+                cpu: 250m
+                memory: 512Mi
+
+        forecasting:
+          enabled: false
+
+        persistentVolume:
+          enabled: false
+
+        service:
+          type: ClusterIP
+
+        prometheus:
+          server:
+            global:
+              external_labels:
+                cluster_id: sports-store-cluster
+            persistentVolume:
+              enabled: false
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 1Gi
+            retention: 97h
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubecost
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
