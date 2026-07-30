@@ -4,11 +4,17 @@ on:
   pull_request:
     paths:
       - ".github/workflows/helm.yml"
+      - "apps/sports-store-production.yaml"
+      - "environments/production/images/**"
       - "helm/sports-store/**"
+      - "tests/test_dep_250.py"
   push:
     paths:
       - ".github/workflows/helm.yml"
+      - "apps/sports-store-production.yaml"
+      - "environments/production/images/**"
       - "helm/sports-store/**"
+      - "tests/test_dep_250.py"
 
 permissions:
   contents: read
@@ -28,7 +34,9 @@ jobs:
         run: |
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm dependency build .
-          tar -xzf charts/mongodb-15.6.26.tgz -C charts
+          for archive in charts/*.tgz; do
+            tar -xzf "$archive" -C charts
+          done
       - name: Lint chart
         working-directory: helm/sports-store
         run: |
@@ -37,3 +45,12 @@ jobs:
       - name: Test rendered manifests
         working-directory: helm/sports-store
         run: helm unittest --strict .
+      - name: Install pinned yq
+        run: |
+          curl -fsSL --retry 3 https://github.com/mikefarah/yq/releases/download/v4.53.2/yq_linux_amd64 -o /tmp/yq
+          echo "d56bf5c6819e8e696340c312bd70f849dc1678a7cda9c2ad63eebd906371d56b  /tmp/yq" | sha256sum --check
+          chmod +x /tmp/yq
+      - name: Validate production image write-back contract
+        env:
+          YQ_BIN: /tmp/yq
+        run: python -m unittest -v tests/test_dep_250.py
