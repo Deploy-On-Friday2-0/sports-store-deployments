@@ -20,3 +20,10 @@ mongodb:
     accessModes:
       - ReadWriteOnce
     size: 8Gi
+
+ingress:
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+
