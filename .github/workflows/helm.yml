@@ -2,11 +2,6 @@ name: Helm validation
 
 on:
   pull_request:
-    paths:
-      - ".github/workflows/helm.yml"
-      - "apps/sports-store-production.yaml"
-      - "environments/production/images/**"
-      - "helm/sports-store/**"
   push:
     paths:
       - ".github/workflows/helm.yml"
@@ -18,7 +13,23 @@ permissions:
   contents: read
 
 jobs:
+  branch-name:
+    name: Branch name validation
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate branch name
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          if [[ ! "$BRANCH_NAME" =~ ^(feature|bugfix|hotfix)/[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+            printf 'Invalid branch name: %s\n' "$BRANCH_NAME"
+            printf 'Use feature/, bugfix/, or hotfix/ followed by a lowercase kebab-case slug.\n'
+            exit 1
+          fi
+
   validate:
+    name: Helm chart validation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
