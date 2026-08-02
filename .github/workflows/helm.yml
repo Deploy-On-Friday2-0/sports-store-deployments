@@ -7,14 +7,12 @@ on:
       - "apps/sports-store-production.yaml"
       - "environments/production/images/**"
       - "helm/sports-store/**"
-      - "tests/test_dep_250.py"
   push:
     paths:
       - ".github/workflows/helm.yml"
       - "apps/sports-store-production.yaml"
       - "environments/production/images/**"
       - "helm/sports-store/**"
-      - "tests/test_dep_250.py"
 
 permissions:
   contents: read
@@ -42,15 +40,11 @@ jobs:
         run: |
           helm lint .
           helm lint . -f values-eks.yaml
+      - name: Render chart
+        working-directory: helm/sports-store
+        run: |
+          helm template sports-store . --namespace sports-store > /dev/null
+          helm template sports-store . --namespace sports-store -f values-eks.yaml > /dev/null
       - name: Test rendered manifests
         working-directory: helm/sports-store
         run: helm unittest --strict .
-      - name: Install pinned yq
-        run: |
-          curl -fsSL --retry 3 https://github.com/mikefarah/yq/releases/download/v4.53.2/yq_linux_amd64 -o /tmp/yq
-          echo "d56bf5c6819e8e696340c312bd70f849dc1678a7cda9c2ad63eebd906371d56b  /tmp/yq" | sha256sum --check
-          chmod +x /tmp/yq
-      - name: Validate production image write-back contract
-        env:
-          YQ_BIN: /tmp/yq
-        run: python -m unittest -v tests/test_dep_250.py

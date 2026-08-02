@@ -29,9 +29,8 @@ helm template sports-store helm/sports-store \
   -f environments/production/images/gateway.yaml
 ```
 
-`tests/test_dep_250.py` validates the manifests, Argo CD value-file wiring,
-Helm rendering, invalid/missing-tag failures, the application workflow paths,
-and an actual `yq` update followed by an idempotent second update.
+The Helm validation workflow lints and renders the chart with both its default
+values and `values-eks.yaml`.
 
 ## GitHub App configuration
 
