@@ -24,3 +24,7 @@ Application source and cloud infrastructure do not belong in this repository.
 Production image promotion, the GitHub App requirements, and the justified
 static-frontend exception are documented in
 [`environments/production/README.md`](environments/production/README.md).
+
+## PR Diff Review Runner
+
+The provider-independent pipeline and trusted post-CI GitHub Actions integration are documented in [`review_runner/README.md`](review_runner/README.md). The trusted workflow runs only after branch-name and Helm chart validation succeed; local use accepts a supplied unified patch and uses the mock provider.
