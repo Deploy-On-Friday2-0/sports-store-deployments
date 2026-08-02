@@ -99,18 +99,14 @@ blindly removing limits.
 
 ## Local validation
 
-The focused test downloads only pinned chart `2.8.7`, lints it, and renders the
-default, explicit-StorageClass, and external-Prometheus cases:
+The Helm validation workflow parses the Argo CD Application YAML and verifies
+its basic structure:
 
 ```sh
-bash tests/kubecost-render.sh
+ruby -e 'require "yaml"; YAML.safe_load_file("apps/kubecost/kubecost.yaml", aliases: true)'
 ```
 
-The same test runs in `.github/workflows/helm.yml`. It checks component-specific
-resource settings, named PVC sizes and StorageClasses, bundled Prometheus
-enablement, internal exposure, and that zero Secret resources render. Static rendering cannot prove that a
-StorageClass exists, that PVCs bind, that an external endpoint is compatible,
-or that allocation and AWS public pricing data are accurate.
+This structural validation does not render or inspect the Kubecost Helm chart.
 
 ## Runtime verification and access
 

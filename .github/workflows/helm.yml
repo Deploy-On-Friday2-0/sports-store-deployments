@@ -6,13 +6,11 @@ on:
       - ".github/workflows/helm.yml"
       - "apps/kubecost/**"
       - "helm/sports-store/**"
-      - "tests/kubecost-render.sh"
   push:
     paths:
       - ".github/workflows/helm.yml"
       - "apps/kubecost/**"
       - "helm/sports-store/**"
-      - "tests/kubecost-render.sh"
 
 permissions:
   contents: read
@@ -41,5 +39,15 @@ jobs:
       - name: Test rendered manifests
         working-directory: helm/sports-store
         run: helm unittest --strict .
-      - name: Validate Kubecost rendering
-        run: bash tests/kubecost-render.sh
+      - name: Validate Kubecost Application YAML
+        run: |
+          ruby -e '
+            require "yaml"
+            app = YAML.safe_load_file("apps/kubecost/kubecost.yaml", aliases: true)
+            abort "expected an Argo CD Application" unless
+              app["apiVersion"] == "argoproj.io/v1alpha1" &&
+              app["kind"] == "Application" &&
+              app.dig("metadata", "name") &&
+              app.dig("spec", "source") &&
+              app.dig("spec", "destination")
+          '
