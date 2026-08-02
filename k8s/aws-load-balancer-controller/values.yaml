@@ -1,0 +1,4 @@
+clusterName: sports-store-cluster
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
