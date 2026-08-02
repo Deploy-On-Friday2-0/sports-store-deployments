@@ -13,24 +13,14 @@ ingress:
   enabled: true
   className: nginx
 
-# ---------------------------------------------------------------------
-# Bitnami MongoDB sub-chart (dependency declared in Chart.yaml, alias
-# "mongodb") — passed straight through as this chart's "mongodb:" key.
-# Same settings verified working in DEP-159's standalone mongodb-values.yaml.
-# ---------------------------------------------------------------------
 mongodb:
   architecture: replicaset
   replicaSetName: rs0
   replicaCount: 3
-  # Bitnami stopped publishing pinned version tags (e.g. 7.0.14-debian-12-r3,
-  # what chart 15.6.26 expects) to the free docker.io/bitnami/mongodb
-  # catalog — only :latest remains there. bitnamilegacy is Bitnami's own
-  # mirror for this migration; verified working in DEP-159.
   image:
     repository: bitnamilegacy/mongodb
   auth:
     enabled: true
-    # Must contain mongodb-root-password and mongodb-replica-set-key.
     # The ExternalSecret synchronizes both keys from AWS Secrets Manager.
     existingSecret: sports-store-app-secrets
   arbiter:
@@ -75,26 +65,9 @@ mongodb:
       cpu: 500m
       memory: 512Mi
 
-# ---------------------------------------------------------------------
-# The 7 first-party microservices. templates/deployment.yaml and
-# templates/service.yaml range over this map once each — adding an eighth
-# service means adding an entry here, not a new template.
-#
-# env entries are emitted as-is (either `value:` or `valueFrom:`), so this
-# map is the single place backend wiring (CATALOG_URL, JWT_SECRET, etc.)
-# lives — no separate ConfigMap for non-secret config, matching DEP-159's
-# choice not to introduce one the ticket didn't ask for.
-#
-# ingressPath: only services that should be reachable through
-# templates/ingress.yaml have one set. "gateway" is deployed (all 7
-# microservices, per this epic's scope) but deliberately has none — see
-# k8s/README.md's note carried over from DEP-159: Ingress routes straight
-# to each backend Service rather than through the gateway Deployment, so
-# Ingress paths can match the frontend's real calls without a second
-# rebuild of the gateway image with different upstream names.
-# ---------------------------------------------------------------------
 services:
   frontend:
+    enabled: true
     image: sports-store-frontend
     tag: v1.0.0
     port: 80
@@ -111,6 +84,7 @@ services:
         memory: 128Mi
 
   gateway:
+    enabled: true
     image: sports-store-gateway
     tag: v1.0.0
     port: 80
@@ -126,6 +100,7 @@ services:
         memory: 128Mi
 
   auth:
+    enabled: true
     image: sports-store-auth-service
     tag: v1.0.0
     port: 8001
@@ -160,6 +135,7 @@ services:
         memory: 256Mi
 
   catalog:
+    enabled: true
     image: sports-store-catalog-service
     tag: v1.0.0
     port: 8002
@@ -181,6 +157,7 @@ services:
         memory: 256Mi
 
   cart:
+    enabled: true
     image: sports-store-cart-service
     tag: v1.0.0
     port: 8003
@@ -210,6 +187,7 @@ services:
         memory: 256Mi
 
   order:
+    enabled: true
     image: sports-store-order-service
     tag: v1.0.0
     port: 8004
@@ -241,6 +219,7 @@ services:
         memory: 256Mi
 
   payment:
+    enabled: true
     image: sports-store-payment-service
     tag: v1.0.0
     port: 8005
