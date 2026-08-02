@@ -2,7 +2,7 @@ apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: k8sgpt-secrets
-  namespace: k8sgpt-operator-system
+  namespace: k8sgpt-operator 
 spec:
   refreshInterval: 1h
   secretStoreRef:
@@ -25,7 +25,7 @@ apiVersion: core.k8sgpt.ai/v1alpha1
 kind: K8sGPT
 metadata:
   name: k8sgpt-prod
-  namespace: k8sgpt-operator-system
+  namespace: k8sgpt-operator 
 spec:
   ai:
     enabled: true
@@ -34,13 +34,21 @@ spec:
     secret:
       name: k8sgpt-secrets
       key: google-api-key
+  autoAnalysis: true  # Automatically performs scans continuously
   noCache: false
   filters:
     namespaces:
       - default
-      - sports-store
+      - apps
       - monitoring
       - logging
+  # Enable specific analyzers to target Pod states, events, and ingress issues
+  analyzers:
+    - pod
+    - event
+    - ingress
+    - service
+    - deployment
   sink:
     type: slack
     secret:

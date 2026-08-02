@@ -4,8 +4,8 @@ This directory contains the GitOps manifests to deploy the **K8sGPT Operator** a
 
 ## 📂 Manifests
 
-1.  **`k8sgpt.yaml`**: The Argo CD Application to deploy the operator from the official charts repository.
-2.  **`k8sgpt-resources.yaml`**: Configures `ExternalSecret` to fetch API/Webhook keys from AWS Secrets Manager, and defines the `K8sGPT` resource to use Google Gemini AI diagnostics.
+1.  **`k8sgpt-operator.yaml`**: The Argo CD Application to deploy the operator from the official charts repository.
+2.  **`k8sgpt-cr.yaml`**: Configures `ExternalSecret` to fetch API/Webhook keys from AWS Secrets Manager, and defines the `K8sGPT` resource to use Google Gemini AI diagnostics.
 
 ## 📋 Prerequisites
 
@@ -20,8 +20,8 @@ Verify that the operator is running and scanning successfully:
 
 ```bash
 # Check operator pod status
-kubectl get pods -n k8sgpt-operator-system
+kubectl get pods -n k8sgpt-operator
 
 # Check the sync status of the K8sGPT Custom Resource
-kubectl describe k8sgpt k8sgpt-prod -n k8sgpt-operator-system
+kubectl describe k8sgpt k8sgpt-prod -n k8sgpt-operator
 ```
