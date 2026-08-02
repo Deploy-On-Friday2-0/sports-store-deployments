@@ -5,18 +5,26 @@ on:
     paths:
       - ".github/workflows/helm.yml"
       - "apps/sports-store-production.yaml"
+      - "apps/root-app.yaml"
+      - "apps/argo-rollouts.yaml"
       - "bootstrap/**"
+      - "projects/**"
       - "environments/production/images/**"
       - "helm/sports-store/**"
       - "tests/dep-239.sh"
+      - "tests/dep-238.sh"
   push:
     paths:
       - ".github/workflows/helm.yml"
       - "apps/sports-store-production.yaml"
+      - "apps/root-app.yaml"
+      - "apps/argo-rollouts.yaml"
       - "bootstrap/**"
+      - "projects/**"
       - "environments/production/images/**"
       - "helm/sports-store/**"
       - "tests/dep-239.sh"
+      - "tests/dep-238.sh"
 
 permissions:
   contents: read
@@ -57,4 +65,6 @@ jobs:
         working-directory: helm/sports-store
         run: helm unittest --strict .
       - name: Test controller bootstrap
-        run: bash tests/dep-239.sh
+        run: |
+          bash tests/dep-238.sh
+          bash tests/dep-239.sh
