@@ -1,0 +1,48 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: k8sgpt-secrets
+  namespace: k8sgpt-operator-system
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  target:
+    name: k8sgpt-secrets
+    creationPolicy: Owner
+  data:
+    - secretKey: google-api-key
+      remoteRef:
+        key: sports-store/production/config
+        property: GOOGLE_API_KEY
+    - secretKey: slack-webhook-url
+      remoteRef:
+        key: sports-store/production/config
+        property: SLACK_WEBHOOK_URL
+---
+apiVersion: core.k8sgpt.ai/v1alpha1
+kind: K8sGPT
+metadata:
+  name: k8sgpt-prod
+  namespace: k8sgpt-operator-system
+spec:
+  ai:
+    enabled: true
+    model: gemini-1.5-flash
+    backend: google
+    secret:
+      name: k8sgpt-secrets
+      key: google-api-key
+  noCache: false
+  filters:
+    namespaces:
+      - default
+      - sports-store
+      - monitoring
+      - logging
+  sink:
+    type: slack
+    secret:
+      name: k8sgpt-secrets
+      key: slack-webhook-url
