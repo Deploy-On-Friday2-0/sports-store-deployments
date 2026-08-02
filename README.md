@@ -16,6 +16,9 @@ See `k8s/README.md` for the raw-manifest layout and apply order (Milestone 2),
 `k8s/external-secrets/README.md` for the External Secrets Operator deployment.
 The pinned Argo CD and Argo Rollouts controller definitions are documented in
 [`bootstrap/README.md`](bootstrap/README.md).
+The AppProject boundary, root App-of-Apps, safe controller adoption, sync, and
+rollback workflow are documented in
+[`docs/gitops-bootstrap.md`](docs/gitops-bootstrap.md).
 Application source and cloud infrastructure do not belong in this repository.
 
 Production image promotion, the GitHub App requirements, and the justified

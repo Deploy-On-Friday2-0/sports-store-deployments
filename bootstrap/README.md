@@ -8,14 +8,15 @@ the official Argo Helm charts:
 | Argo CD | `argo-cd` | `10.2.2` | `argocd` |
 | Argo Rollouts | `argo-rollouts` | `2.41.1` | `argo-rollouts` |
 
-`00-namespaces.yaml` owns both namespaces. The Application resources retain
+`00-namespaces.yaml` owns the controller and shared platform namespaces. The Application resources retain
 `CreateNamespace=true` as a safe reconciliation fallback, but namespace
 creation does not depend on an imperative Helm flag. Apply the namespace
 manifest before registering the Applications with the cluster's bootstrap Argo
 CD instance.
 
-Automated sync and self-healing are intentionally not configured here. Those
-policies belong to DEP-251. The Rollouts chart installs its cluster-scoped CRDs,
+Argo Rollouts is adopted by the root App-of-Apps at
+`apps/argo-rollouts.yaml`, where automated sync and self-healing are enabled.
+Argo CD self-sync remains manual as a recovery safeguard. The Rollouts chart installs its cluster-scoped CRDs,
 including the `AnalysisTemplate` and `ClusterAnalysisTemplate` APIs, and retains
 them if the release is removed.
 
@@ -37,3 +38,7 @@ The test parses the manifests, renders both pinned upstream charts with the
 embedded values, verifies namespaces and workload resources, and confirms that
 the Rollouts CRDs include `AnalysisTemplate` support. It does not connect to a
 Kubernetes cluster.
+
+See [`docs/gitops-bootstrap.md`](../docs/gitops-bootstrap.md) for bootstrap
+order, project boundaries, controller adoption, access prerequisites, and Git
+revert rollback procedures.

@@ -3,8 +3,11 @@ kind: Application
 metadata:
   name: sports-store-production
   namespace: argocd
+  labels:
+    app.kubernetes.io/name: sports-store-production
+    app.kubernetes.io/part-of: sports-store
 spec:
-  project: default
+  project: sports-store-project
   source:
     repoURL: https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git
     targetRevision: main
@@ -21,3 +24,9 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: sports-store
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

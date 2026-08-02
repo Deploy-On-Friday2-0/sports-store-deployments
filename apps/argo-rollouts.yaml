@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: argo-rollouts
     app.kubernetes.io/part-of: sports-store
 spec:
-  project: default
+  project: sports-store-project
   source:
     repoURL: https://argoproj.github.io/argo-helm
     chart: argo-rollouts
@@ -34,5 +34,8 @@ spec:
     server: https://kubernetes.default.svc
     namespace: argo-rollouts
   syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true

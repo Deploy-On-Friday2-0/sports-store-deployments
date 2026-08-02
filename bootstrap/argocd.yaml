@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: argocd
     app.kubernetes.io/part-of: sports-store
 spec:
-  project: default
+  project: sports-store-project
   source:
     repoURL: https://argoproj.github.io/argo-helm
     chart: argo-cd
@@ -29,6 +29,12 @@ spec:
               memory: 512Mi
 
         server:
+          service:
+            type: ClusterIP
+          ingress:
+            # DEP-240 remains disabled until a verified internal DNS name,
+            # ACM certificate, and authentication policy are supplied.
+            enabled: false
           resources:
             requests:
               cpu: 50m

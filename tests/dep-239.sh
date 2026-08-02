@@ -26,6 +26,7 @@ assert_application() {
   local chart="$3"
   local version="$4"
   local namespace="$5"
+  local automated_expected="$6"
   ruby -ryaml -e '
     app = YAML.safe_load_file(ARGV.fetch(0), aliases: true)
     expected = {
@@ -39,15 +40,20 @@ assert_application() {
       actual = path.split(".").reduce(app) { |node, key| node.fetch(key) }
       abort "#{path}: expected #{value.inspect}, got #{actual.inspect}" unless actual.to_s == value
     end
-    abort "automated sync must remain out of DEP-239" if app.dig("spec", "syncPolicy", "automated")
-  ' "$application" "$name" "$chart" "$version" "$namespace"
+    automated = app.dig("spec", "syncPolicy", "automated")
+    if ARGV.fetch(5) == "true"
+      abort "prune/self-heal must be enabled" unless automated == {"prune" => true, "selfHeal" => true}
+    else
+      abort "automated Argo CD self-sync is unsafe" if automated
+    end
+  ' "$application" "$name" "$chart" "$version" "$namespace" "$automated_expected"
 }
 
 assert_namespaces() {
   ruby -ryaml -e '
     documents = YAML.load_stream(File.read(ARGV.fetch(0)))
     namespaces = documents.filter_map { |doc| doc.dig("metadata", "name") if doc["kind"] == "Namespace" }
-    expected = %w[argocd argo-rollouts]
+    expected = %w[argocd argo-rollouts apps monitoring logging]
     abort "expected namespaces #{expected.inspect}, got #{namespaces.inspect}" unless namespaces.sort == expected.sort
   ' "$bootstrap_dir/00-namespaces.yaml"
 }
@@ -74,11 +80,11 @@ assert_workload_resources() {
 }
 
 assert_namespaces
-assert_application "$bootstrap_dir/argocd.yaml" argocd argo-cd 10.2.2 argocd
-assert_application "$bootstrap_dir/argo-rollouts.yaml" argo-rollouts argo-rollouts 2.41.1 argo-rollouts
+assert_application "$bootstrap_dir/argocd.yaml" argocd argo-cd 10.2.2 argocd false
+assert_application "$repo_root/apps/argo-rollouts.yaml" argo-rollouts argo-rollouts 2.41.1 argo-rollouts true
 
 extract_values "$bootstrap_dir/argocd.yaml" "$temp_dir/argocd-values.yaml"
-extract_values "$bootstrap_dir/argo-rollouts.yaml" "$temp_dir/argo-rollouts-values.yaml"
+extract_values "$repo_root/apps/argo-rollouts.yaml" "$temp_dir/argo-rollouts-values.yaml"
 
 helm template argocd argo/argo-cd --version 10.2.2 --namespace argocd \
   --values "$temp_dir/argocd-values.yaml" --include-crds >"$temp_dir/argocd-rendered.yaml"
