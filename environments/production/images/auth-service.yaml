@@ -1,0 +1,7 @@
+# Source of truth for the production auth-service image tag. The alias makes
+# this file a native Helm values overlay while keeping `.image.tag` stable for CI.
+image:
+  tag: &authServiceTag 1.0.0
+services:
+  auth:
+    tag: *authServiceTag

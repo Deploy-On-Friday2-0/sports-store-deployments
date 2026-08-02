@@ -1,0 +1,6 @@
+# Source of truth for the production gateway image tag.
+image:
+  tag: &gatewayTag 1.0.0
+services:
+  gateway:
+    tag: *gatewayTag

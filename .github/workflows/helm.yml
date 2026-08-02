@@ -4,10 +4,14 @@ on:
   pull_request:
     paths:
       - ".github/workflows/helm.yml"
+      - "apps/sports-store-production.yaml"
+      - "environments/production/images/**"
       - "helm/sports-store/**"
   push:
     paths:
       - ".github/workflows/helm.yml"
+      - "apps/sports-store-production.yaml"
+      - "environments/production/images/**"
       - "helm/sports-store/**"
 
 permissions:
@@ -28,12 +32,19 @@ jobs:
         run: |
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm dependency build .
-          tar -xzf charts/mongodb-15.6.26.tgz -C charts
+          for archive in charts/*.tgz; do
+            tar -xzf "$archive" -C charts
+          done
       - name: Lint chart
         working-directory: helm/sports-store
         run: |
           helm lint .
           helm lint . -f values-eks.yaml
+      - name: Render chart
+        working-directory: helm/sports-store
+        run: |
+          helm template sports-store . --namespace sports-store > /dev/null
+          helm template sports-store . --namespace sports-store -f values-eks.yaml > /dev/null
       - name: Test rendered manifests
         working-directory: helm/sports-store
         run: helm unittest --strict .

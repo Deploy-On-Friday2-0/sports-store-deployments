@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sports-store-production
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git
+    targetRevision: main
+    path: helm/sports-store
+    helm:
+      valueFiles:
+        - values-eks.yaml
+        - ../../environments/production/images/auth-service.yaml
+        - ../../environments/production/images/cart-service.yaml
+        - ../../environments/production/images/catalog-service.yaml
+        - ../../environments/production/images/order-service.yaml
+        - ../../environments/production/images/payment-service.yaml
+        - ../../environments/production/images/gateway.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sports-store

@@ -14,3 +14,7 @@ See `k8s/README.md` for the raw-manifest layout and apply order (Milestone 2),
 `helm/sports-store/README.md` for the parent Helm chart (Milestone 3), and
 `k8s/external-secrets/README.md` for the External Secrets Operator deployment.
 Application source and cloud infrastructure do not belong in this repository.
+
+Production image promotion, the GitHub App requirements, and the justified
+static-frontend exception are documented in
+[`environments/production/README.md`](environments/production/README.md).
