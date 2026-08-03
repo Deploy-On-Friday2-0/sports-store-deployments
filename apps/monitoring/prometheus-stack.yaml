@@ -1,0 +1,61 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus-stack
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: prometheus-stack
+    app.kubernetes.io/part-of: sports-store
+spec:
+  # Third-party charts sit in the built-in `default` project (same pattern as
+  # apps/kubecost); the sports-store-project AppProject is deliberately locked
+  # to the deployments repo + argo-helm and must not be widened.
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 88.1.2
+    helm:
+      releaseName: prometheus-stack
+      values: |
+        # AC 2.1.1.2 - Grafana sidecar dashboard discovery.
+        # Auto-imports any ConfigMap labeled `grafana_dashboard: "1"` from every
+        # namespace, so app teams (and the canary AnalysisTemplate work in
+        # Sub-PRD 6) can ship dashboards as ConfigMaps without touching Grafana.
+        grafana:
+          sidecar:
+            dashboards:
+              enabled: true
+              label: grafana_dashboard
+              labelValue: "1"
+              searchNamespace: ALL
+              folderAnnotation: grafana_folder
+              provider:
+                foldersFromFilesStructure: true
+
+        # AC 2.1.1.3 - Prometheus persistence on the Amazon EBS CSI gp3
+        # StorageClass provisioned by Terraform (kubernetes/storageclasses/
+        # ebs-gp3-retain.yaml). That class sets volumeBindingMode:
+        # WaitForFirstConsumer, so the PV is created in the pod's AZ.
+        prometheus:
+          prometheusSpec:
+            retention: 15d
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: ebs-gp3-retain
+                  accessModes:
+                    - ReadWriteOnce
+                  resources:
+                    requests:
+                      storage: 20Gi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

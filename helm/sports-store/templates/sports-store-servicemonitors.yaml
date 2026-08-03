@@ -1,0 +1,39 @@
+{{- if .Values.mongodb.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}-mongodb-metrics
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sports-store.labels" . | nindent 4 }}
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: metrics
+      app.kubernetes.io/name: mongodb
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  endpoints:
+    - port: http-metrics
+      interval: 15s
+{{- end }}
+---
+{{- if .Values.redis.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}-redis-metrics
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sports-store.labels" . | nindent 4 }}
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: metrics
+      app.kubernetes.io/name: redis
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  endpoints:
+    - port: http-metrics
+      interval: 15s
+{{- end }}

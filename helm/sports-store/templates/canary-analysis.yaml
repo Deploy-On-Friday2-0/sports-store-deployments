@@ -1,0 +1,36 @@
+{{- if .Values.platform.canaryAnalysis }}
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: sports-store-canary-analysis
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sports-store.labels" . | nindent 4 }}
+spec:
+  args:
+    - name: service-name
+  metrics:
+    # 1. Success Rate Metric Checks (SuccessRate >= 99.5%, checked every 30s over a 1m window)
+    - name: success-rate
+      interval: 30s
+      successCondition: result[0] >= 0.995
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://prometheus-operated.monitoring.svc.cluster.local:9090
+          query: |
+            sum(rate(http_requests_total{status=~"2..|3..", app="{{`{{args.service-name}}`}}"}[1m]))
+            /
+            sum(rate(http_requests_total{app="{{`{{args.service-name}}`}}"}[1m]))
+
+    # 2. P95 Latency Metric Checks (P95 < 250ms, checked every 30s over a 1m window)
+    - name: latency
+      interval: 30s
+      successCondition: result[0] < 0.250
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://prometheus-operated.monitoring.svc.cluster.local:9090
+          query: |
+            histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app="{{`{{args.service-name}}`}}"}[1m])) by (le))
+{{- end }}

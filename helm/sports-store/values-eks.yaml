@@ -1,6 +1,3 @@
-# EKS-specific values. The infrastructure-managed StorageClass must exist
-# before this chart is installed; this chart does not install the EBS CSI
-# Driver or create cluster-scoped storage resources.
 mongodb:
   # Enforce one ReplicaSet member per Availability Zone. All three members
   # remain Pending unless the cluster has eligible workers in three zones.
@@ -20,8 +17,12 @@ mongodb:
     accessModes:
       - ReadWriteOnce
     size: 8Gi
+  metrics:
+    enabled: true
 
 redis:
+  metrics:
+    enabled: true
   sentinel:
     persistentVolumeClaimRetentionPolicy:
       enabled: true
@@ -37,4 +38,12 @@ ingress:
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
+    # Optional ACM certificate override - if omitted, ALB defaults to HTTP on port 80
+    # alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:123456789012:certificate/abc-123"
+
+services:
+  gateway:
+    enabled: false
+  frontend:
+    enabled: false
 

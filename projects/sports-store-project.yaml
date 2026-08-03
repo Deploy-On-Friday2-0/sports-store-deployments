@@ -3,41 +3,81 @@ kind: AppProject
 metadata:
   name: sports-store-project
   namespace: argocd
+  labels:
+    app.kubernetes.io/name: sports-store-project
+    app.kubernetes.io/part-of: sports-store
 spec:
-  description: Least-privilege boundary for Sports Store production GitOps
+  description: Deployment boundary for Sports Store workloads and GitOps controllers
   sourceRepos:
     - https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git
     - https://argoproj.github.io/argo-helm
   destinations:
-    - {server: https://kubernetes.default.svc, namespace: default}
-    - {server: https://kubernetes.default.svc, namespace: apps}
-    - {server: https://kubernetes.default.svc, namespace: monitoring}
-    - {server: https://kubernetes.default.svc, namespace: logging}
-    # DEP-248 explicit exception: existing production chart destination.
-    - {server: https://kubernetes.default.svc, namespace: sports-store}
-    - {server: https://kubernetes.default.svc, namespace: argocd}
-    - {server: https://kubernetes.default.svc, namespace: argo-rollouts}
+    - server: https://kubernetes.default.svc
+      namespace: default
+    - server: https://kubernetes.default.svc
+      namespace: apps
+    - server: https://kubernetes.default.svc
+      namespace: monitoring
+    - server: https://kubernetes.default.svc
+      namespace: logging
+    # Existing workload and controller destinations are narrow exceptions.
+    - server: https://kubernetes.default.svc
+      namespace: sports-store
+    - server: https://kubernetes.default.svc
+      namespace: argocd
+    - server: https://kubernetes.default.svc
+      namespace: argo-rollouts
   clusterResourceWhitelist:
-    - {group: "", kind: Namespace}
-    - {group: apiextensions.k8s.io, kind: CustomResourceDefinition}
-    - {group: rbac.authorization.k8s.io, kind: ClusterRole}
-    - {group: rbac.authorization.k8s.io, kind: ClusterRoleBinding}
+    - group: ""
+      kind: Namespace
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
   namespaceResourceWhitelist:
-    - {group: "", kind: ConfigMap}
-    - {group: "", kind: PersistentVolumeClaim}
-    - {group: "", kind: Secret}
-    - {group: "", kind: Service}
-    - {group: "", kind: ServiceAccount}
-    - {group: apps, kind: Deployment}
-    - {group: apps, kind: StatefulSet}
-    - {group: networking.k8s.io, kind: Ingress}
-    - {group: policy, kind: PodDisruptionBudget}
-    - {group: rbac.authorization.k8s.io, kind: Role}
-    - {group: rbac.authorization.k8s.io, kind: RoleBinding}
-    - {group: external-secrets.io, kind: ExternalSecret}
-    - {group: argoproj.io, kind: Application}
-    - {group: argoproj.io, kind: AnalysisRun}
-    - {group: argoproj.io, kind: AnalysisTemplate}
-    - {group: argoproj.io, kind: ClusterAnalysisTemplate}
-    - {group: argoproj.io, kind: Experiment}
-    - {group: argoproj.io, kind: Rollout}
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Endpoints
+    - group: ""
+      kind: PersistentVolumeClaim
+    - group: ""
+      kind: Secret
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ServiceAccount
+    - group: apps
+      kind: Deployment
+    - group: apps
+      kind: StatefulSet
+    - group: batch
+      kind: Job
+    - group: networking.k8s.io
+      kind: Ingress
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+    - group: policy
+      kind: PodDisruptionBudget
+    - group: rbac.authorization.k8s.io
+      kind: Role
+    - group: rbac.authorization.k8s.io
+      kind: RoleBinding
+    - group: external-secrets.io
+      kind: ExternalSecret
+    - group: monitoring.coreos.com
+      kind: ServiceMonitor
+    - group: argoproj.io
+      kind: AnalysisRun
+    - group: argoproj.io
+      kind: AnalysisTemplate
+    - group: argoproj.io
+      kind: Application
+    - group: argoproj.io
+      kind: ClusterAnalysisTemplate
+    - group: argoproj.io
+      kind: Experiment
+    - group: argoproj.io
+      kind: Rollout

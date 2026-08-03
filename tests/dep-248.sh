@@ -8,14 +8,14 @@ ruby -ryaml -e '
   repo = "https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git"
   abort "wrong root project" unless root.dig("spec", "project") == "sports-store-project"
   abort "wrong root source" unless root.dig("spec", "source").slice("repoURL", "targetRevision", "path") == {"repoURL" => repo, "targetRevision" => "main", "path" => "apps"}
-  abort "root discovery is too broad" unless root.dig("spec", "source", "directory", "include") == "sports-store-production.yaml"
+  abort "root must exclude itself" unless root.dig("spec", "source", "directory", "exclude") == "root-app.yaml"
   abort "root automation missing" unless root.dig("spec", "syncPolicy", "automated") == {"prune" => true, "selfHeal" => true}
 
   apps = YAML.load_stream(File.read(ARGV[1])).compact
   names = apps.map { |app| app.dig("metadata", "name") }
-  expected = %w[argo-rollouts production-mongodb production-redis-sentinel production-auth-service production-cart-service production-catalog-service production-order-service production-payment-service production-gateway]
+  expected = %w[production-mongodb production-redis-sentinel production-auth-service production-cart-service production-catalog-service production-order-service production-payment-service production-gateway]
   abort "unexpected Applications: #{names.inspect}" unless names.sort == expected.sort
-  workload_apps = apps.reject { |app| app.dig("metadata", "name") == "argo-rollouts" }
+  workload_apps = apps
   workload_apps.each do |app|
     abort "non-Application document" unless app["kind"] == "Application"
     abort "wrong project" unless app.dig("spec", "project") == "sports-store-project"
@@ -37,17 +37,19 @@ ruby -ryaml -e '
   }
   actual_releases = workload_apps.to_h { |app| [app.dig("metadata", "name"), app.dig("spec", "source", "helm", "releaseName")] }
   abort "release-name mapping drift: #{actual_releases.inspect}" unless actual_releases == expected_releases
-  all_releases = apps.map { |app| app.dig("spec", "source", "helm", "releaseName") }
+  all_releases = workload_apps.map { |app| app.dig("spec", "source", "helm", "releaseName") }
   abort "missing Helm release name" if all_releases.any?(&:nil?)
   abort "duplicate Helm release name" unless all_releases.uniq.length == all_releases.length
-  controller = apps.find { |app| app.dig("metadata", "name") == "argo-rollouts" }
-  abort "controller source drift" unless controller.dig("spec", "source").slice("repoURL", "chart", "targetRevision") == {"repoURL" => "https://argoproj.github.io/argo-helm", "chart" => "argo-rollouts", "targetRevision" => "2.41.1"}
   waves = apps.to_h { |app| [app.dig("metadata", "name"), Integer(app.dig("metadata", "annotations", "argocd.argoproj.io/sync-wave"))] }
   abort "databases must precede services" unless waves["production-mongodb"] < waves["production-auth-service"] && waves["production-redis-sentinel"] < waves["production-auth-service"]
-  abort "controller must precede databases" unless waves["argo-rollouts"] < waves["production-mongodb"]
   creators = apps.select { |app| app.dig("spec", "syncPolicy", "syncOptions")&.include?("CreateNamespace=true") }
   abort "namespace creation drift" unless creators.map { |app| app.dig("metadata", "name") }.sort == names.sort
-' "$repo_root/apps/root-app.yaml" "$repo_root/apps/sports-store-production.yaml"
+
+  controller = YAML.safe_load_file(ARGV[2], aliases: true)
+  abort "controller source drift" unless controller.dig("spec", "source").slice("repoURL", "chart", "targetRevision") == {"repoURL" => "https://argoproj.github.io/argo-helm", "chart" => "argo-rollouts", "targetRevision" => "2.41.1"}
+  controller_wave = Integer(controller.dig("metadata", "annotations", "argocd.argoproj.io/sync-wave"))
+  abort "controller must precede databases" unless controller_wave < waves["production-mongodb"]
+' "$repo_root/apps/root-app.yaml" "$repo_root/apps/sports-store-production.yaml" "$repo_root/apps/argo-rollouts.yaml"
 
 ruby -ryaml -e '
   project = YAML.safe_load_file(ARGV[0], aliases: true)
