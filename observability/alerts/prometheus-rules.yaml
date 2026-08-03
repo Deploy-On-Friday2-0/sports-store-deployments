@@ -49,9 +49,9 @@ spec:
           # >5% of responses are 5xx over a 5-minute window (grouped status label
           # from prometheus-fastapi-instrumentator, e.g. status="5xx").
           expr: |
-            sum by (job) (rate(http_requests_total{status="5xx"}[5m]))
+            sum by (job) (rate(http_requests_total{namespace="sports-store", status="5xx"}[5m]))
               /
-            sum by (job) (rate(http_requests_total[5m]))
+            sum by (job) (rate(http_requests_total{namespace="sports-store"}[5m]))
               > 0.05
           for: 5m
           labels:
