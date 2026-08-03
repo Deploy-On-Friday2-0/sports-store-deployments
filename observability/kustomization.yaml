@@ -1,0 +1,22 @@
+# DEP-266 (Sub-PRD 7 2.2.1). Kustomize turns the raw Grafana dashboard JSON
+# into a ConfigMap labeled grafana_dashboard: "1", which the DEP-262 Grafana
+# sidecar auto-discovers and imports. The PrometheusRule is applied as-is.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: monitoring
+
+resources:
+  - alerts/prometheus-rules.yaml
+
+configMapGenerator:
+  - name: sports-store-overview-dashboard
+    files:
+      - dashboards/sports-store-overview.json
+    options:
+      # Stable name so Argo CD self-heal does not churn on a hash suffix.
+      disableNameSuffixHash: true
+      labels:
+        grafana_dashboard: "1"
+        app.kubernetes.io/part-of: sports-store
+      annotations:
+        grafana_folder: Sports Store
