@@ -14,6 +14,9 @@ spec:
     directory:
       recurse: false
       include: '*.yaml'
+      # Exclude the root Application itself; otherwise the '*.yaml' glob makes
+      # it manage its own manifest (self-ownership loop).
+      exclude: 'root-app.yaml'
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
