@@ -1,0 +1,334 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubecost
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: kubecost
+    app.kubernetes.io/part-of: sports-store
+spec:
+  project: default
+  source:
+    repoURL: https://kubecost.github.io/cost-analyzer/
+    chart: cost-analyzer
+    targetRevision: 2.8.7
+    helm:
+      releaseName: kubecost
+      values: |
+        global:
+          prometheus:
+            enabled: true
+          grafana:
+            enabled: false
+        kubecostProductConfigs:
+          clusterName: sports-store-cluster
+          defaultIdle: true
+          sharedNamespaces: "kube-system,kubecost"
+          shareTenancyCosts: true
+        kubecostFrontend:
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+        kubecostModel:
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 750m
+              memory: 1Gi
+        kubecostAggregator:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          cloudCost:
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+              limits:
+                cpu: 250m
+                memory: 512Mi
+        forecasting:
+          enabled: false
+        persistentVolume:
+          enabled: true
+          size: 10Gi
+        service:
+          type: ClusterIP
+        prometheus:
+          server:
+            global:
+              external_labels:
+                cluster_id: sports-store-cluster
+            persistentVolume:
+              enabled: true
+              size: 20Gi
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 1Gi
+            retention: 97h
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubecost
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus-stack
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: prometheus-stack
+    app.kubernetes.io/part-of: sports-store
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 88.1.2
+    helm:
+      releaseName: prometheus-stack
+      values: |
+        grafana:
+          sidecar:
+            dashboards:
+              enabled: true
+              label: grafana_dashboard
+              labelValue: "1"
+              searchNamespace: ALL
+              folderAnnotation: grafana_folder
+              provider:
+                foldersFromFilesStructure: true
+        prometheus:
+          prometheusSpec:
+            retention: 15d
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: ebs-gp3-retain
+                  accessModes:
+                    - ReadWriteOnce
+                  resources:
+                    requests:
+                      storage: 20Gi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: k8sgpt-operator
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: k8sgpt-operator
+    app.kubernetes.io/part-of: sports-store
+spec:
+  project: default
+  source:
+    repoURL: https://charts.k8sgpt.ai/
+    chart: k8sgpt-operator
+    targetRevision: 0.1.1
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: k8sgpt-operator 
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: k8sgpt-resources
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: k8sgpt-resources
+    app.kubernetes.io/part-of: sports-store
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git
+    targetRevision: main
+    path: apps/k8sgpt
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: k8sgpt-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: loki
+    app.kubernetes.io/part-of: sports-store
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: loki
+    targetRevision: 6.5.0
+    helm:
+      releaseName: loki
+      values: |
+        loki:
+          auth_enabled: false
+          commonConfig:
+            replication_factor: 1
+          storage:
+            type: filesystem
+        singleBinary:
+          replicas: 1
+          persistence:
+            enabled: true
+            size: 20Gi
+            storageClassName: ebs-gp3-retain
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alloy
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/part-of: sports-store
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: alloy
+    targetRevision: 1.3.0
+    helm:
+      releaseName: alloy
+      values: |
+        alloy:
+          stabilityLevel: experimental
+          configMap:
+            create: true
+            content: |
+              logging {
+                level = "info"
+              }
+
+              loki.write "loki" {
+                endpoint {
+                  url = "http://loki.logging.svc.cluster.local:3100/loki/api/v1/push"
+                }
+              }
+
+              discovery.kubernetes "pods" {
+                role = "pod"
+                selectors {
+                  role = "pod"
+                  field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+                }
+              }
+
+              discovery.relabel "pod_logs" {
+                targets = discovery.kubernetes.pods.targets
+
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace"]
+                  action = "replace"
+                  target_label = "namespace"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_name"]
+                  action = "replace"
+                  target_label = "pod"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_container_name"]
+                  action = "replace"
+                  target_label = "container"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+                  action = "replace"
+                  target_label = "__path__"
+                  separator = "/"
+                  replacement = "/var/log/pods/*$1/*.log"
+                }
+              }
+
+              loki.source.file "pod_logs" {
+                targets = discovery.relabel.pod_logs.output
+                forward_to = [loki.process.log_parsing.receiver]
+              }
+
+              loki.process "log_parsing" {
+                forward_to = [loki.secretfilter.redact_secrets.receiver]
+
+                stage.json {
+                  expressions = {
+                    level = "level",
+                    service = "service",
+                    trace_id = "trace_id"
+                  }
+                }
+
+                stage.labels {
+                  values = {
+                    level = "",
+                    service = "",
+                    trace_id = ""
+                  }
+                }
+              }
+
+              loki.secretfilter "redact_secrets" {
+                forward_to = [loki.write.loki.receiver]
+              }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

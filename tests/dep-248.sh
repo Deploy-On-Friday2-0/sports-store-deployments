@@ -8,7 +8,7 @@ ruby -ryaml -e '
   repo = "https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git"
   abort "wrong root project" unless root.dig("spec", "project") == "sports-store-project"
   abort "wrong root source" unless root.dig("spec", "source").slice("repoURL", "targetRevision", "path") == {"repoURL" => repo, "targetRevision" => "main", "path" => "apps"}
-  abort "root discovery is too broad" unless root.dig("spec", "source", "directory", "include") == "sports-store-production.yaml"
+  abort "root discovery is too broad" unless root.dig("spec", "source", "directory", "include") == "*.yaml"
   abort "root automation missing" unless root.dig("spec", "syncPolicy", "automated") == {"prune" => true, "selfHeal" => true}
 
   apps = YAML.load_stream(File.read(ARGV[1])).compact

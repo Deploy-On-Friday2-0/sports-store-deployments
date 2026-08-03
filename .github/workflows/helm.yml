@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/helm.yml"
       - "apps/sports-store-production.yaml"
+      - "apps/infrastructure.yaml"
       - "apps/root-app.yaml"
       - "projects/**"
       - "bootstrap/**"
@@ -12,10 +13,13 @@ on:
       - "helm/sports-store/**"
       - "tests/dep-239.sh"
       - "tests/dep-248.sh"
+      - "tests/dep-264.sh"
+      - "tests/dep-264.py"
   push:
     paths:
       - ".github/workflows/helm.yml"
       - "apps/sports-store-production.yaml"
+      - "apps/infrastructure.yaml"
       - "apps/root-app.yaml"
       - "projects/**"
       - "bootstrap/**"
@@ -23,6 +27,8 @@ on:
       - "helm/sports-store/**"
       - "tests/dep-239.sh"
       - "tests/dep-248.sh"
+      - "tests/dep-264.sh"
+      - "tests/dep-264.py"
 
 permissions:
   contents: read
@@ -82,3 +88,4 @@ jobs:
         run: |
           bash tests/dep-239.sh
           bash tests/dep-248.sh
+          bash tests/dep-264.sh
