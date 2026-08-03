@@ -10,12 +10,12 @@ configuration is production-sized or validated against the live cluster.
 
 - **DEP-319: Kubecost uses the core kube-prometheus-stack**, not a bundled
   Prometheus. `global.prometheus.enabled: false` and `global.prometheus.fqdn`
-  points at `http://prometheus-stack-kube-prom-prometheus.monitoring.svc:9090`
-  — the Prometheus Service created by
+  points at `http://prometheus-operated.monitoring.svc.cluster.local:9090`
+  — the Prometheus API Service the Prometheus Operator maintains in the
+  `monitoring` namespace for the stack deployed by
   [`apps/monitoring/prometheus-stack.yaml`](../monitoring/prometheus-stack.yaml)
-  (chart `kube-prometheus-stack`, release `prometheus-stack`, namespace
-  `monitoring`). This avoids running a second, duplicate Prometheus in the
-  cluster.
+  (chart `kube-prometheus-stack`, release `prometheus-stack`). This avoids
+  running a second, duplicate Prometheus in the cluster.
 - The reverse direction is also wired: `serviceMonitor.enabled: true` and
   `prometheusRule.enabled: true`, both labelled `release: prometheus-stack` so
   the core Prometheus Operator selects them (its default
@@ -46,7 +46,7 @@ All deployment inputs are Helm values in `kubecost.yaml`:
 | Decision | Value path | Default |
 | --- | --- | --- |
 | Bundled Prometheus | `global.prometheus.enabled` | `false` |
-| Core Prometheus endpoint | `global.prometheus.fqdn` | `http://prometheus-stack-kube-prom-prometheus.monitoring.svc:9090` |
+| Core Prometheus endpoint | `global.prometheus.fqdn` | `http://prometheus-operated.monitoring.svc.cluster.local:9090` |
 | Scrape Kubecost from core Prometheus | `serviceMonitor.enabled` | `true` |
 | Kubecost recording rules in core Prometheus | `prometheusRule.enabled` | `true` |
 | Operator selector label | `serviceMonitor.additionalLabels.release` / `prometheusRule.additionalLabels.release` | `prometheus-stack` |
@@ -76,7 +76,7 @@ and has an acceptable reclaim policy. Confirm the core Prometheus is running and
 reachable at `global.prometheus.fqdn` before syncing Kubecost:
 
 ```sh
-kubectl -n monitoring get svc prometheus-stack-kube-prom-prometheus
+kubectl -n monitoring get svc prometheus-operated
 kubectl -n argocd get application prometheus-stack
 ```
 
