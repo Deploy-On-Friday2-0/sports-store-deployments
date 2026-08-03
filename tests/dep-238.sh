@@ -40,11 +40,9 @@ ruby -ryaml -e '
   abort "root prune/self-heal is disabled" unless automated == {"prune" => true, "selfHeal" => true}
 ' "$repo_root/apps/root-app.yaml"
 
-# sports-store-production.yaml is always present; argo-rollouts.yaml is checked
-# only when present (it lives on main and returns after a rebase).
-applications=("$repo_root/apps/sports-store-production.yaml")
-[ -f "$repo_root/apps/argo-rollouts.yaml" ] && applications+=("$repo_root/apps/argo-rollouts.yaml")
-for application in "${applications[@]}"; do
+for application in \
+  "$repo_root/apps/argo-rollouts.yaml" \
+  "$repo_root/apps/sports-store-production.yaml"; do
   ruby -ryaml -e '
     app = YAML.safe_load_file(ARGV.fetch(0), aliases: true)
     abort "#{ARGV.fetch(0)} uses the wrong project" unless app.dig("spec", "project") == "sports-store-project"

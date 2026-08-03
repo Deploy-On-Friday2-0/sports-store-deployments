@@ -1,9 +1,3 @@
-# Routes straight to each backend Service, same design as the raw
-# k8s/04-ingress.yaml: paths match what the frontend actually calls
-# (/api/products, /api/auth, /api/cart, /api/orders, /api/payments), not an
-# unused /api/v1/* scheme. Only services with an ingressPath set in
-# values.yaml get a rule — "gateway" deliberately has none (see
-# values.yaml's comment on why it's still deployed but not routed to).
 {{- if .Values.ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -12,24 +6,33 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "sports-store.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
   annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- if .Values.ingress.annotations }}
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+    {{- end }}
+    # Declarative Target Group forwarding actions for AWS ALB controller
+    {{- if eq .Values.ingress.className "alb" }}
+    alb.ingress.kubernetes.io/actions.catalog: '{"type":"forward","forwardConfig":{"targetGroups":[{"serviceName":"catalog","servicePort":8002,"weight":100}]}}'
+    alb.ingress.kubernetes.io/actions.order: '{"type":"forward","forwardConfig":{"targetGroups":[{"serviceName":"order","servicePort":8004,"weight":100}]}}'
+    {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
     - http:
         paths:
           {{- range $name, $svc := .Values.services }}
-          {{- if and $svc.ingressPath (has $name $.Values.ingressServices) }}
+          {{- if and $svc.ingressPath $svc.enabled (has $name $.Values.ingressServices) }}
           - path: {{ $svc.ingressPath }}
             pathType: Prefix
             backend:
               service:
                 name: {{ $name }}
                 port:
+                  {{- if and (eq $.Values.ingress.className "alb") (or (eq $name "catalog") (eq $name "order")) }}
+                  name: use-annotation
+                  {{- else }}
                   number: {{ $svc.port }}
+                  {{- end }}
           {{- end }}
           {{- end }}
 {{- end }}

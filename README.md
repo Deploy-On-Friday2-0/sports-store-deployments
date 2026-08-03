@@ -29,6 +29,11 @@ Sentinel follows in wave -1, and dependent services start at wave 0.
 MongoDB and Redis Sentinel both retain StatefulSet claims on deletion and
 scale-down and use the infrastructure-managed `ebs-gp3-retain` StorageClass in
 production, protecting persistent data if Argo CD prunes a StatefulSet.
+
+The AppProject boundary, root App-of-Apps, safe controller adoption, sync, and
+rollback workflow are documented in
+[`docs/gitops-bootstrap.md`](docs/gitops-bootstrap.md).
+
 Application source and cloud infrastructure do not belong in this repository.
 
 Production image promotion, the GitHub App requirements, and the justified

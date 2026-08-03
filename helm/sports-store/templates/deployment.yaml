@@ -1,20 +1,12 @@
-# Single template, ranged over .Values.services, renders all 7 microservice
-# Deployments. Names stay unprefixed (see _helpers.tpl's comment on
-# sports-store.fullname for why). readinessProbe/livenessProbe hit each
-# service's real /health endpoint on its real containerPort — there is no
-# initContainer gating startup on MongoDB; each backend's Mongo client
-# already retries lazily per-request (services/*/database.py), so a
-# request that arrives before Mongo is reachable fails and self-heals on
-# the next one, the same behavior verified in Stage 2/DEP-159.
 {{- range $name, $svc := .Values.services }}
-{{- if has $name $.Values.enabledServices }}
+{{- if and $svc.enabled (has $name $.Values.enabledServices) }}
 {{- $tag := required (printf "services.%s.tag must be set" $name) $svc.tag }}
 {{- if not (regexMatch "^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$" (toString $tag)) }}
 {{- fail (printf "services.%s.tag is not a valid container image tag" $name) }}
 {{- end }}
 ---
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: {{ if or (eq $name "catalog") (eq $name "order") }}argoproj.io/v1alpha1{{ else }}apps/v1{{ end }}
+kind: {{ if or (eq $name "catalog") (eq $name "order") }}Rollout{{ else }}Deployment{{ end }}
 metadata:
   name: {{ $name }}
   namespace: {{ $.Release.Namespace }}
@@ -23,9 +15,36 @@ metadata:
     {{- include "sports-store.labels" $ | nindent 4 }}
 spec:
   replicas: {{ $svc.replicas }}
+  {{- if or (eq $name "catalog") (eq $name "order") }}
+  revisionHistoryLimit: 3
+  {{- end }}
   selector:
     matchLabels:
       {{- include "sports-store.selectorLabels" $name | nindent 6 }}
+  {{- if or (eq $name "catalog") (eq $name "order") }}
+  strategy:
+    canary:
+      stableService: {{ $name }}
+      canaryService: {{ $name }}-canary
+      trafficRouting:
+        {{- if eq $.Values.ingress.className "alb" }}
+        alb:
+          ingress: {{ include "sports-store.fullname" $ }}
+          rootService: {{ $name }}
+        {{- else if eq $.Values.ingress.className "nginx" }}
+        nginx:
+          stableService: {{ $name }}
+        {{- end }}
+      steps:
+        - setWeight: 10
+        - pause: { duration: 1m }
+        - setWeight: 25
+        - pause: { duration: 1m }
+        - setWeight: 50
+        - pause: { duration: 1m }
+        - setWeight: 75
+        - pause: { duration: 1m }
+  {{- end }}
   template:
     metadata:
       labels:
