@@ -18,6 +18,9 @@ on:
       - "tests/dep-251.sh"
       - "tests/dep-264.sh"
       - "tests/dep-264.py"
+      - "load-testing/k6/**"
+      - "tests/dep-296.sh"
+      - "tests/dep-296.py"
   push:
     paths:
       - ".github/workflows/helm.yml"
@@ -35,6 +38,9 @@ on:
       - "tests/dep-251.sh"
       - "tests/dep-264.sh"
       - "tests/dep-264.py"
+      - "load-testing/k6/**"
+      - "tests/dep-296.sh"
+      - "tests/dep-296.py"
 
 permissions:
   contents: read
@@ -97,3 +103,4 @@ jobs:
           bash tests/dep-248.sh
           bash tests/dep-251.sh
           bash tests/dep-264.sh
+          bash tests/dep-296.sh
