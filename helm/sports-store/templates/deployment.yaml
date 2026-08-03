@@ -56,6 +56,9 @@ spec:
           imagePullPolicy: {{ $.Values.imagePullPolicy }}
           ports:
             - containerPort: {{ $svc.port }}
+              {{- if $svc.metrics }}
+              name: http-metrics
+              {{- end }}
           {{- if $svc.env }}
           env:
             {{- range $svc.env }}
