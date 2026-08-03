@@ -298,7 +298,7 @@ redis:
   architecture: replication
   auth:
     enabled: true
-    existingSecret: sports-store-app-secrets
+    existingSecret: sports-store-redis-secrets
     existingSecretPasswordKey: redis-password
   sentinel:
     enabled: true
