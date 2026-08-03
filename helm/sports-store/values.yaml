@@ -4,6 +4,9 @@
 
 imagePullPolicy: IfNotPresent
 
+monitoring:
+  prometheusRelease: prometheus-stack
+
 # An Argo CD child Application can select one workload while retaining this
 # chart as the repository's single deployment contract. An empty list renders
 # no first-party Deployments or Services. Defaults preserve the full-chart

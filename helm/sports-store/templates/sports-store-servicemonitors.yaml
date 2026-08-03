@@ -18,7 +18,7 @@ spec:
       interval: 15s
 {{- end }}
 ---
-{{- if .Values.redis.enabled }}
+{{- if and .Values.redis.enabled .Values.redis.metrics.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -26,8 +26,11 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "sports-store.labels" . | nindent 4 }}
-    release: prometheus
+    release: {{ .Values.monitoring.prometheusRelease }}
 spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
   selector:
     matchLabels:
       app.kubernetes.io/component: metrics
