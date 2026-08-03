@@ -17,6 +17,9 @@ spec:
   ports:
     - port: {{ $svc.port }}
       targetPort: {{ $svc.port }}
+      {{- if $svc.metrics }}
+      name: http-metrics
+      {{- end }}
 {{- if or (eq $name "catalog") (eq $name "order") }}
 ---
 apiVersion: v1
@@ -33,6 +36,9 @@ spec:
   ports:
     - port: {{ $svc.port }}
       targetPort: {{ $svc.port }}
+      {{- if $svc.metrics }}
+      name: http-metrics
+      {{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

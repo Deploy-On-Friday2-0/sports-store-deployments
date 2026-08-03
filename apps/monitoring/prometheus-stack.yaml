@@ -23,6 +23,12 @@ spec:
         # namespace, so app teams (and the canary AnalysisTemplate work in
         # Sub-PRD 6) can ship dashboards as ConfigMaps without touching Grafana.
         grafana:
+          # DEP-270 - admin credentials come from the grafana-admin Secret that
+          # ESO syncs from AWS Secrets Manager; no plaintext password in Git.
+          admin:
+            existingSecret: grafana-admin
+            userKey: admin-user
+            passwordKey: admin-password
           sidecar:
             dashboards:
               enabled: true
@@ -49,6 +55,34 @@ spec:
                   resources:
                     requests:
                       storage: 20Gi
+
+        # DEP-270 - route alerts to Slack. The webhook URL is mounted from the
+        # alertmanager-slack Secret (synced from AWS Secrets Manager by ESO) and
+        # read via api_url_file, so no plaintext webhook lives in Git.
+        alertmanager:
+          alertmanagerSpec:
+            secrets:
+              - alertmanager-slack
+          config:
+            global:
+              resolve_timeout: 5m
+            route:
+              group_by: ["alertname", "namespace"]
+              group_wait: 30s
+              group_interval: 5m
+              repeat_interval: 4h
+              receiver: slack-notifications
+              routes:
+                - receiver: "null"
+                  matchers:
+                    - alertname = "Watchdog"
+            receivers:
+              - name: "null"
+              - name: slack-notifications
+                slack_configs:
+                  - channel: "#sports-store-alerts"
+                    send_resolved: true
+                    api_url_file: /etc/alertmanager/secrets/alertmanager-slack/slack-webhook-url
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
