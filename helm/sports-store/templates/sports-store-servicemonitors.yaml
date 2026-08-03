@@ -1,8 +1,13 @@
 # DEP-263 (Sub-PRD 7 2.1.2) - ServiceMonitors for the Sports Store platform.
-# Disabled by default so the chart does not require the Prometheus Operator CRDs
-# in every environment; enabled in values-eks.yaml where kube-prometheus-stack
-# runs. All monitors carry the shared release label so the DEP-262 Prometheus
-# discovers them.
+# Each monitor is an INDEPENDENT conditional so that, under the DEP-248
+# multi-release layout (one Argo Application per workload, all sharing
+# values-eks.yaml), each is owned by exactly one release:
+#   * the shared backend monitor renders only where
+#     monitoring.serviceMonitor.enabled is set (the production-mongodb release,
+#     which already owns the platform singletons) - never globally;
+#   * the MongoDB / Redis monitors render only in the release that actually
+#     deploys that dependency (<dep>.enabled AND <dep>.metrics.enabled).
+# All carry the shared release label so the DEP-262 Prometheus discovers them.
 {{- if .Values.monitoring.serviceMonitor.enabled }}
 # Backend microservices: scrape every Service labeled
 # app.kubernetes.io/part-of: sports-store on the http-metrics port. Services
@@ -27,9 +32,10 @@ spec:
       path: {{ .Values.monitoring.serviceMonitor.path }}
       interval: {{ .Values.monitoring.serviceMonitor.interval }}
       scheme: http
-{{- if (.Values.mongodb.metrics | default dict).enabled }}
+{{- end }}
+{{- if and .Values.mongodb.enabled (.Values.mongodb.metrics | default dict).enabled }}
 ---
-# MongoDB exporter (DEP-294).
+# MongoDB exporter (DEP-294) - owned by the release that deploys MongoDB.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -48,9 +54,9 @@ spec:
     - port: http-metrics
       interval: {{ .Values.monitoring.serviceMonitor.interval }}
 {{- end }}
-{{- if (.Values.redis.metrics | default dict).enabled }}
+{{- if and .Values.redis.enabled (.Values.redis.metrics | default dict).enabled }}
 ---
-# Redis exporter (DEP-294).
+# Redis exporter (DEP-294) - owned by the release that deploys Redis.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -68,5 +74,4 @@ spec:
   endpoints:
     - port: http-metrics
       interval: {{ .Values.monitoring.serviceMonitor.interval }}
-{{- end }}
 {{- end }}

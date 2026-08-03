@@ -47,8 +47,10 @@ services:
   frontend:
     enabled: false
 
-# EKS runs kube-prometheus-stack (DEP-262), so enable the ServiceMonitors here.
-monitoring:
-  serviceMonitor:
-    enabled: true
+# NOTE: the shared backend ServiceMonitor is intentionally NOT enabled here.
+# values-eks.yaml is shared by every DEP-248 production release, so enabling it
+# globally would make all of them fight to own the single fixed-name resource.
+# It is enabled in exactly one owning release (production-mongodb) instead.
+# The MongoDB/Redis exporter monitors self-gate on <dep>.enabled +
+# <dep>.metrics.enabled, so they render only in their owning release.
 
