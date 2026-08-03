@@ -17,6 +17,8 @@ mongodb:
     accessModes:
       - ReadWriteOnce
     size: 8Gi
+  metrics:
+    enabled: true
 
 ingress:
   className: alb
@@ -31,4 +33,8 @@ services:
     enabled: false
   frontend:
     enabled: false
+
+redis:
+  metrics:
+    enabled: true
 
