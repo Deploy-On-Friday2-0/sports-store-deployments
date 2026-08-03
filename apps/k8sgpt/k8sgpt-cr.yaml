@@ -36,19 +36,13 @@ spec:
       key: google-api-key
   autoAnalysis: true  # Automatically performs scans continuously
   noCache: false
+  targetNamespace: sports-store
   filters:
-    namespaces:
-      - default
-      - apps
-      - monitoring
-      - logging
-  # Enable specific analyzers to target Pod states, events, and ingress issues
-  analyzers:
-    - pod
-    - event
-    - ingress
-    - service
-    - deployment
+    - Pod
+    - Event
+    - Ingress
+    - Service
+    - Deployment
   sink:
     type: slack
     secret:
