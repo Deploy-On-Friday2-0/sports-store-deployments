@@ -20,6 +20,19 @@ mongodb:
   metrics:
     enabled: true
 
+redis:
+  metrics:
+    enabled: true
+  sentinel:
+    persistentVolumeClaimRetentionPolicy:
+      enabled: true
+      whenScaled: Retain
+      whenDeleted: Retain
+    persistence:
+      enabled: true
+      storageClass: ebs-gp3-retain
+      size: 8Gi
+
 ingress:
   className: alb
   annotations:
@@ -33,8 +46,4 @@ services:
     enabled: false
   frontend:
     enabled: false
-
-redis:
-  metrics:
-    enabled: true
 

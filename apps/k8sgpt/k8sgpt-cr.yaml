@@ -25,7 +25,7 @@ apiVersion: core.k8sgpt.ai/v1alpha1
 kind: K8sGPT
 metadata:
   name: k8sgpt-default
-  namespace: k8sgpt-operator 
+  namespace: k8sgpt-operator
 spec:
   ai:
     enabled: true
@@ -54,7 +54,7 @@ apiVersion: core.k8sgpt.ai/v1alpha1
 kind: K8sGPT
 metadata:
   name: k8sgpt-apps
-  namespace: k8sgpt-operator 
+  namespace: k8sgpt-operator
 spec:
   ai:
     enabled: true
@@ -83,7 +83,7 @@ apiVersion: core.k8sgpt.ai/v1alpha1
 kind: K8sGPT
 metadata:
   name: k8sgpt-monitoring
-  namespace: k8sgpt-operator 
+  namespace: k8sgpt-operator
 spec:
   ai:
     enabled: true
@@ -112,7 +112,7 @@ apiVersion: core.k8sgpt.ai/v1alpha1
 kind: K8sGPT
 metadata:
   name: k8sgpt-logging
-  namespace: k8sgpt-operator 
+  namespace: k8sgpt-operator
 spec:
   ai:
     enabled: true

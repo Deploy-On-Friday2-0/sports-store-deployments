@@ -12,6 +12,7 @@ on:
       - "environments/production/images/**"
       - "helm/sports-store/**"
       - "tests/dep-239.sh"
+      - "tests/dep-248.sh"
       - "tests/dep-238.sh"
   push:
     paths:
@@ -24,6 +25,7 @@ on:
       - "environments/production/images/**"
       - "helm/sports-store/**"
       - "tests/dep-239.sh"
+      - "tests/dep-248.sh"
       - "tests/dep-238.sh"
 
 permissions:
@@ -84,3 +86,4 @@ jobs:
         run: |
           bash tests/dep-238.sh
           bash tests/dep-239.sh
+          bash tests/dep-248.sh
