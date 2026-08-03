@@ -45,7 +45,9 @@ ingress:
 # that named port, so frontend/gateway are skipped automatically.
 monitoring:
   serviceMonitor:
-    enabled: true
+    # Off by default so the chart does not require the Prometheus Operator CRDs
+    # in non-EKS environments; values-eks.yaml turns it on.
+    enabled: false
     interval: 15s
     path: /metrics
     # kube-prometheus-stack's Prometheus only discovers ServiceMonitors carrying

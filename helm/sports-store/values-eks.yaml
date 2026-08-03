@@ -47,3 +47,8 @@ services:
   frontend:
     enabled: false
 
+# EKS runs kube-prometheus-stack (DEP-262), so enable the ServiceMonitors here.
+monitoring:
+  serviceMonitor:
+    enabled: true
+

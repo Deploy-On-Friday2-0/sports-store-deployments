@@ -1,4 +1,35 @@
-{{- if .Values.mongodb.enabled }}
+# DEP-263 (Sub-PRD 7 2.1.2) - ServiceMonitors for the Sports Store platform.
+# Disabled by default so the chart does not require the Prometheus Operator CRDs
+# in every environment; enabled in values-eks.yaml where kube-prometheus-stack
+# runs. All monitors carry the shared release label so the DEP-262 Prometheus
+# discovers them.
+{{- if .Values.monitoring.serviceMonitor.enabled }}
+# Backend microservices: scrape every Service labeled
+# app.kubernetes.io/part-of: sports-store on the http-metrics port. Services
+# without that named port (frontend/gateway) produce no scrape target.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: sports-store-servicemonitors
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sports-store.labels" . | nindent 4 }}
+    release: {{ .Values.monitoring.serviceMonitor.releaseLabel }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: sports-store
+  endpoints:
+    - port: http-metrics
+      path: {{ .Values.monitoring.serviceMonitor.path }}
+      interval: {{ .Values.monitoring.serviceMonitor.interval }}
+      scheme: http
+{{- if (.Values.mongodb.metrics | default dict).enabled }}
+---
+# MongoDB exporter (DEP-294).
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -6,7 +37,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "sports-store.labels" . | nindent 4 }}
-    release: prometheus
+    release: {{ .Values.monitoring.serviceMonitor.releaseLabel }}
 spec:
   selector:
     matchLabels:
@@ -15,10 +46,11 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
   endpoints:
     - port: http-metrics
-      interval: 15s
+      interval: {{ .Values.monitoring.serviceMonitor.interval }}
 {{- end }}
+{{- if (.Values.redis.metrics | default dict).enabled }}
 ---
-{{- if .Values.redis.enabled }}
+# Redis exporter (DEP-294).
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -26,7 +58,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "sports-store.labels" . | nindent 4 }}
-    release: prometheus
+    release: {{ .Values.monitoring.serviceMonitor.releaseLabel }}
 spec:
   selector:
     matchLabels:
@@ -35,5 +67,6 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
   endpoints:
     - port: http-metrics
-      interval: 15s
+      interval: {{ .Values.monitoring.serviceMonitor.interval }}
+{{- end }}
 {{- end }}
