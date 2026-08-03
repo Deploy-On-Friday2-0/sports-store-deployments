@@ -206,18 +206,37 @@ spec:
     helm:
       releaseName: loki
       values: |
+        # Single-binary mode must be explicit; otherwise the chart keeps its
+        # default simple-scalable replicas AND singleBinary.replicas, and its
+        # own validation aborts the render.
+        deploymentMode: SingleBinary
+        read: {replicas: 0}
+        write: {replicas: 0}
+        backend: {replicas: 0}
         loki:
           auth_enabled: false
           commonConfig:
             replication_factor: 1
           storage:
             type: filesystem
+          # The chart refuses to render without a schema_config.
+          schemaConfig:
+            configs:
+              - from: "2024-01-01"
+                store: tsdb
+                object_store: filesystem
+                schema: v13
+                index:
+                  prefix: loki_index_
+                  period: 24h
         singleBinary:
           replicas: 1
           persistence:
             enabled: true
             size: 20Gi
-            storageClassName: ebs-gp3-retain
+            # Chart key is storageClass (storageClassName is ignored here), so
+            # the PVC now actually binds to the gp3 class.
+            storageClass: ebs-gp3-retain
   destination:
     server: https://kubernetes.default.svc
     namespace: logging

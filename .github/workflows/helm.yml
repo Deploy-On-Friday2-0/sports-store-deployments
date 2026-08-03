@@ -11,6 +11,7 @@ on:
       - "bootstrap/**"
       - "environments/production/images/**"
       - "helm/sports-store/**"
+      - "tests/dep-238.sh"
       - "tests/dep-239.sh"
       - "tests/dep-248.sh"
       - "tests/dep-264.sh"
@@ -25,6 +26,7 @@ on:
       - "bootstrap/**"
       - "environments/production/images/**"
       - "helm/sports-store/**"
+      - "tests/dep-238.sh"
       - "tests/dep-239.sh"
       - "tests/dep-248.sh"
       - "tests/dep-264.sh"
@@ -86,6 +88,7 @@ jobs:
         run: helm unittest --strict .
       - name: Test controller bootstrap
         run: |
+          bash tests/dep-238.sh
           bash tests/dep-239.sh
           bash tests/dep-248.sh
           bash tests/dep-264.sh
