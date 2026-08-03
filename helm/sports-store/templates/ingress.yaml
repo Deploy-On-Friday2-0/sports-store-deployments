@@ -21,7 +21,7 @@ spec:
     - http:
         paths:
           {{- range $name, $svc := .Values.services }}
-          {{- if and $svc.ingressPath $svc.enabled }}
+          {{- if and $svc.ingressPath $svc.enabled (has $name $.Values.ingressServices) }}
           - path: {{ $svc.ingressPath }}
             pathType: Prefix
             backend:

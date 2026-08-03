@@ -1,7 +1,7 @@
 # ClusterIP Service per microservice, ranged over the same .Values.services
 # map as deployment.yaml. Names stay unprefixed — see _helpers.tpl.
 {{- range $name, $svc := .Values.services }}
-{{- if $svc.enabled }}
+{{- if and $svc.enabled (has $name $.Values.enabledServices) }}
 ---
 apiVersion: v1
 kind: Service
