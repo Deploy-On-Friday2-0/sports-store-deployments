@@ -37,7 +37,7 @@ spec:
     targetRevision: main
     path: helm/sports-store
     helm:
-      releaseName: sports-store
+      releaseName: sports-store-mongodb
       valueFiles: [values-eks.yaml]
       values: |
         enabledServices: []
@@ -61,7 +61,7 @@ spec:
     targetRevision: main
     path: helm/sports-store
     helm:
-      releaseName: sports-store
+      releaseName: sports-store-redis-sentinel
       valueFiles: [values-eks.yaml]
       values: |
         enabledServices: []
@@ -71,6 +71,8 @@ spec:
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
   syncPolicy:
     automated: {prune: true, selfHeal: true}
+    syncOptions:
+      - CreateNamespace=true
 ---
 # Each backend Application selects one workload from the repository's existing
 # parent chart. This avoids duplicate resource ownership while preserving the
@@ -85,7 +87,7 @@ spec:
     targetRevision: main
     path: helm/sports-store
     helm:
-      releaseName: sports-store
+      releaseName: sports-store-auth
       valueFiles: [values-eks.yaml, ../../environments/production/images/auth-service.yaml]
       values: |
         enabledServices: [auth]
@@ -94,7 +96,10 @@ spec:
         mongodb: {enabled: false}
         redis: {enabled: false}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
-  syncPolicy: {automated: {prune: true, selfHeal: true}}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions:
+      - CreateNamespace=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -106,7 +111,7 @@ spec:
     targetRevision: main
     path: helm/sports-store
     helm:
-      releaseName: sports-store
+      releaseName: sports-store-cart
       valueFiles: [values-eks.yaml, ../../environments/production/images/cart-service.yaml]
       values: |
         enabledServices: [cart]
@@ -115,7 +120,10 @@ spec:
         mongodb: {enabled: false}
         redis: {enabled: false}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
-  syncPolicy: {automated: {prune: true, selfHeal: true}}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions:
+      - CreateNamespace=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -127,7 +135,7 @@ spec:
     targetRevision: main
     path: helm/sports-store
     helm:
-      releaseName: sports-store
+      releaseName: sports-store-catalog
       valueFiles: [values-eks.yaml, ../../environments/production/images/catalog-service.yaml]
       values: |
         enabledServices: [catalog]
@@ -136,7 +144,10 @@ spec:
         mongodb: {enabled: false}
         redis: {enabled: false}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
-  syncPolicy: {automated: {prune: true, selfHeal: true}}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions:
+      - CreateNamespace=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -148,7 +159,7 @@ spec:
     targetRevision: main
     path: helm/sports-store
     helm:
-      releaseName: sports-store
+      releaseName: sports-store-order
       valueFiles: [values-eks.yaml, ../../environments/production/images/order-service.yaml]
       values: |
         enabledServices: [order]
@@ -157,7 +168,10 @@ spec:
         mongodb: {enabled: false}
         redis: {enabled: false}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
-  syncPolicy: {automated: {prune: true, selfHeal: true}}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions:
+      - CreateNamespace=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -169,7 +183,7 @@ spec:
     targetRevision: main
     path: helm/sports-store
     helm:
-      releaseName: sports-store
+      releaseName: sports-store-payment
       valueFiles: [values-eks.yaml, ../../environments/production/images/payment-service.yaml]
       values: |
         enabledServices: [payment]
@@ -178,7 +192,10 @@ spec:
         mongodb: {enabled: false}
         redis: {enabled: false}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
-  syncPolicy: {automated: {prune: true, selfHeal: true}}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions:
+      - CreateNamespace=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -190,7 +207,7 @@ spec:
     targetRevision: main
     path: helm/sports-store
     helm:
-      releaseName: sports-store
+      releaseName: sports-store-gateway
       valueFiles: [values-eks.yaml, ../../environments/production/images/gateway.yaml]
       values: |
         enabledServices: [gateway]
@@ -199,4 +216,7 @@ spec:
         mongodb: {enabled: false}
         redis: {enabled: false}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
-  syncPolicy: {automated: {prune: true, selfHeal: true}}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions:
+      - CreateNamespace=true

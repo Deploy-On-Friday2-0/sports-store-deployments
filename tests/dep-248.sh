@@ -23,14 +23,30 @@ ruby -ryaml -e '
     abort "wrong revision/path" unless app.dig("spec", "source", "targetRevision") == "main" && app.dig("spec", "source", "path") == "helm/sports-store"
     abort "wrong destination" unless app.dig("spec", "destination") == {"server" => "https://kubernetes.default.svc", "namespace" => "sports-store"}
     abort "automation missing" unless app.dig("spec", "syncPolicy", "automated") == {"prune" => true, "selfHeal" => true}
+    abort "safe namespace creation missing" unless app.dig("spec", "syncPolicy", "syncOptions")&.include?("CreateNamespace=true")
   end
+  expected_releases = {
+    "production-mongodb" => "sports-store-mongodb",
+    "production-redis-sentinel" => "sports-store-redis-sentinel",
+    "production-auth-service" => "sports-store-auth",
+    "production-cart-service" => "sports-store-cart",
+    "production-catalog-service" => "sports-store-catalog",
+    "production-order-service" => "sports-store-order",
+    "production-payment-service" => "sports-store-payment",
+    "production-gateway" => "sports-store-gateway"
+  }
+  actual_releases = workload_apps.to_h { |app| [app.dig("metadata", "name"), app.dig("spec", "source", "helm", "releaseName")] }
+  abort "release-name mapping drift: #{actual_releases.inspect}" unless actual_releases == expected_releases
+  all_releases = apps.map { |app| app.dig("spec", "source", "helm", "releaseName") }
+  abort "missing Helm release name" if all_releases.any?(&:nil?)
+  abort "duplicate Helm release name" unless all_releases.uniq.length == all_releases.length
   controller = apps.find { |app| app.dig("metadata", "name") == "argo-rollouts" }
   abort "controller source drift" unless controller.dig("spec", "source").slice("repoURL", "chart", "targetRevision") == {"repoURL" => "https://argoproj.github.io/argo-helm", "chart" => "argo-rollouts", "targetRevision" => "2.41.1"}
   waves = apps.to_h { |app| [app.dig("metadata", "name"), Integer(app.dig("metadata", "annotations", "argocd.argoproj.io/sync-wave"))] }
   abort "databases must precede services" unless waves["production-mongodb"] < waves["production-auth-service"] && waves["production-redis-sentinel"] < waves["production-auth-service"]
   abort "controller must precede databases" unless waves["argo-rollouts"] < waves["production-mongodb"]
   creators = apps.select { |app| app.dig("spec", "syncPolicy", "syncOptions")&.include?("CreateNamespace=true") }
-  abort "namespace creation drift" unless creators.map { |app| app.dig("metadata", "name") }.sort == %w[argo-rollouts production-mongodb]
+  abort "namespace creation drift" unless creators.map { |app| app.dig("metadata", "name") }.sort == names.sort
 ' "$repo_root/apps/root-app.yaml" "$repo_root/apps/sports-store-production.yaml"
 
 ruby -ryaml -e '
