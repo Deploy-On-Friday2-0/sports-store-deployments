@@ -1,0 +1,88 @@
+suite: Redis metrics ServiceMonitor contract
+release:
+  name: sports-store-redis-sentinel
+  namespace: sports-store
+values:
+  - ../values-eks.yaml
+templates:
+  - templates/sports-store-servicemonitors.yaml
+  - charts/redis/templates/metrics-svc.yaml
+  - charts/redis/templates/sentinel/statefulset.yaml
+  - charts/redis/templates/configmap.yaml
+  - charts/redis/templates/health-configmap.yaml
+  - charts/redis/templates/scripts-configmap.yaml
+  - charts/redis/templates/secret.yaml
+tests:
+  - it: renders a scoped monitor for the Redis metrics Service
+    template: templates/sports-store-servicemonitors.yaml
+    set:
+      mongodb.enabled: false
+    asserts:
+      - isKind:
+          of: ServiceMonitor
+      - equal:
+          path: metadata.labels.release
+          value: prometheus-stack
+      - equal:
+          path: spec.namespaceSelector.matchNames
+          value:
+            - sports-store
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/component: metrics
+            app.kubernetes.io/name: redis
+            app.kubernetes.io/instance: sports-store-redis-sentinel
+      - equal:
+          path: spec.endpoints[0].port
+          value: http-metrics
+      - equal:
+          path: spec.endpoints[0].interval
+          value: 15s
+
+  - it: does not render when Redis is disabled
+    template: templates/sports-store-servicemonitors.yaml
+    set:
+      mongodb.enabled: false
+      redis.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: does not render without the Redis metrics exporter
+    template: templates/sports-store-servicemonitors.yaml
+    set:
+      mongodb.enabled: false
+      redis.metrics.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: exposes the named exporter port from the metrics Service
+    template: charts/redis/templates/metrics-svc.yaml
+    asserts:
+      - equal:
+          path: spec.selector
+          value:
+            app.kubernetes.io/instance: sports-store-redis-sentinel
+            app.kubernetes.io/name: redis
+      - equal:
+          path: spec.ports[0].name
+          value: http-metrics
+      - equal:
+          path: spec.ports[0].targetPort
+          value: metrics
+
+  - it: runs the exporter sidecar in Sentinel pods
+    template: charts/redis/templates/sentinel/statefulset.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers
+          content:
+            name: metrics
+          any: true
+      - contains:
+          path: spec.template.spec.containers[2].ports
+          content:
+            name: metrics
+            containerPort: 9121
