@@ -17,12 +17,29 @@ spec:
       values: |
         global:
           prometheus:
-            # Set to false only after global.prometheus.fqdn is set to a
-            # verified, Kubecost-compatible in-cluster Prometheus endpoint.
-            enabled: true
-            # fqdn: https://verified-prometheus-endpoint.example.invalid
+            # DEP-319 - Kubecost consumes the core kube-prometheus-stack
+            # Prometheus (release `prometheus-stack`, namespace `monitoring`)
+            # instead of bundling its own. The bundled Prometheus block below is
+            # therefore removed.
+            enabled: false
+            fqdn: http://prometheus-stack-kube-prom-prometheus.monitoring.svc:9090
           grafana:
             enabled: false
+
+        # DEP-319 - let the core Prometheus Operator scrape Kubecost's own
+        # cost-model metrics and load its recording rules. kube-prometheus-stack
+        # only selects ServiceMonitors/PrometheusRules labelled
+        # `release: prometheus-stack`, so that label is added here.
+        serviceMonitor:
+          enabled: true
+          additionalLabels:
+            release: prometheus-stack
+          networkCosts:
+            enabled: false
+        prometheusRule:
+          enabled: true
+          additionalLabels:
+            release: prometheus-stack
 
         kubecostProductConfigs:
           clusterName: sports-store-cluster
@@ -76,25 +93,6 @@ spec:
 
         service:
           type: ClusterIP
-
-        prometheus:
-          server:
-            global:
-              external_labels:
-                cluster_id: sports-store-cluster
-            persistentVolume:
-              enabled: true
-              size: 20Gi
-              # Omit storageClass to use the cluster's default StorageClass.
-              # storageClass: verified-storage-class
-            resources:
-              requests:
-                cpu: 100m
-                memory: 256Mi
-              limits:
-                cpu: 500m
-                memory: 1Gi
-            retention: 97h
   destination:
     server: https://kubernetes.default.svc
     namespace: kubecost

@@ -1,4 +1,4 @@
-# Kubecost allocation (DEP-267)
+# Kubecost allocation (DEP-267) + core Prometheus integration (DEP-319)
 
 [`kubecost.yaml`](kubecost.yaml) defines a reusable, production-like baseline
 for an Argo CD-managed Kubecost deployment. It pins the official `cost-analyzer`
@@ -8,20 +8,26 @@ configuration is production-sized or validated against the live cluster.
 
 ## Architecture and defaults
 
-- Bundled Prometheus is enabled (`global.prometheus.enabled: true`). No
-  kube-prometheus-stack, Prometheus, Thanos, VictoriaMetrics, Amazon Managed
-  Service for Prometheus, or compatible endpoint is defined elsewhere in this
-  repository. Cluster discovery was not possible locally, so this must be
-  checked before deployment to avoid duplicate monitoring.
-- Kubecost persistence is enabled with a `10Gi` request. Bundled Prometheus
-  persistence is enabled with a `20Gi` request and `97h` retention. The chart's
-  default `49`-hour Kubecost hourly ETL window remains below Prometheus
-  retention, as required by chart 2.8.7.
+- **DEP-319: Kubecost uses the core kube-prometheus-stack**, not a bundled
+  Prometheus. `global.prometheus.enabled: false` and `global.prometheus.fqdn`
+  points at `http://prometheus-stack-kube-prom-prometheus.monitoring.svc:9090`
+  — the Prometheus Service created by
+  [`apps/monitoring/prometheus-stack.yaml`](../monitoring/prometheus-stack.yaml)
+  (chart `kube-prometheus-stack`, release `prometheus-stack`, namespace
+  `monitoring`). This avoids running a second, duplicate Prometheus in the
+  cluster.
+- The reverse direction is also wired: `serviceMonitor.enabled: true` and
+  `prometheusRule.enabled: true`, both labelled `release: prometheus-stack` so
+  the core Prometheus Operator selects them (its default
+  `serviceMonitorSelectorNilUsesHelmValues` only matches that release label).
+  Kubecost's cost-model `/metrics` are then scraped by the core Prometheus and
+  its recording rules are loaded there.
+- Kubecost persistence is enabled with a `10Gi` request. The bundled Prometheus
+  and its separate persistence/retention are no longer part of this Application.
 - No `storageClass` is set. Kubernetes therefore uses the cluster's default
-  StorageClass. To select a verified class explicitly, set the same class at
-  `persistentVolume.storageClass` and
-  `prometheus.server.persistentVolume.storageClass`. Do not set either key to an
-  empty value; omit it to retain default-class behavior.
+  StorageClass. To select a verified class explicitly, set
+  `persistentVolume.storageClass`. Do not set it to an empty value; omit it to
+  retain default-class behavior.
 - The aggregator uses the chart's `singlepod` deployment method and the main
   Kubecost persistent volume. The separate aggregator StatefulSet storage
   settings do not apply to this deployment model.
@@ -39,23 +45,19 @@ All deployment inputs are Helm values in `kubecost.yaml`:
 
 | Decision | Value path | Default |
 | --- | --- | --- |
-| Bundled Prometheus | `global.prometheus.enabled` | `true` |
-| External endpoint | `global.prometheus.fqdn` | unset for external use |
+| Bundled Prometheus | `global.prometheus.enabled` | `false` |
+| Core Prometheus endpoint | `global.prometheus.fqdn` | `http://prometheus-stack-kube-prom-prometheus.monitoring.svc:9090` |
+| Scrape Kubecost from core Prometheus | `serviceMonitor.enabled` | `true` |
+| Kubecost recording rules in core Prometheus | `prometheusRule.enabled` | `true` |
+| Operator selector label | `serviceMonitor.additionalLabels.release` / `prometheusRule.additionalLabels.release` | `prometheus-stack` |
 | Kubecost persistence | `persistentVolume.enabled` | `true` |
 | Kubecost volume size | `persistentVolume.size` | `10Gi` |
 | Kubecost StorageClass | `persistentVolume.storageClass` | omitted |
-| Prometheus persistence | `prometheus.server.persistentVolume.enabled` | `true` |
-| Prometheus volume size | `prometheus.server.persistentVolume.size` | `20Gi` |
-| Prometheus StorageClass | `prometheus.server.persistentVolume.storageClass` | omitted |
-| Prometheus retention | `prometheus.server.retention` | `97h` |
 
-For an existing Prometheus, first verify that it meets Kubecost's scrape and
-recording-rule requirements. Then set `global.prometheus.enabled: false` and
-set `global.prometheus.fqdn` to the verified endpoint. Do not guess its scheme,
-namespace, service, port, TLS, or authentication settings. When bundled
-Prometheus is disabled, its persistence values remain harmlessly unused.
-Authentication should reference a pre-existing Kubernetes Secret through the
-chart's supported secret-name values; never put credentials in this file.
+The core Prometheus supplies the scrape targets Kubecost needs (kube-state-metrics,
+node-exporter, and cadvisor) — all shipped by `kube-prometheus-stack`. If the
+monitoring release name or namespace ever changes, update `global.prometheus.fqdn`
+and the two `release` labels to match; never put credentials in this file.
 
 ## Pre-deployment checks
 
@@ -70,12 +72,16 @@ helm list -A
 ```
 
 Confirm exactly one default StorageClass exists, supports dynamic provisioning,
-and has an acceptable reclaim policy. Confirm there is no existing compatible
-Prometheus before retaining the bundled default. If one exists, establish its
-Kubecost compatibility and endpoint/authentication contract before switching to
-external mode. Also confirm the cluster permits the chart's cluster-scoped read
-RBAC and that namespace Pod Security controls accept the rendered security
-contexts.
+and has an acceptable reclaim policy. Confirm the core Prometheus is running and
+reachable at `global.prometheus.fqdn` before syncing Kubecost:
+
+```sh
+kubectl -n monitoring get svc prometheus-stack-kube-prom-prometheus
+kubectl -n argocd get application prometheus-stack
+```
+
+Also confirm the cluster permits the chart's cluster-scoped read RBAC and that
+namespace Pod Security controls accept the rendered security contexts.
 
 ## Resource sizing
 
@@ -87,7 +93,6 @@ The values are conservative starting points for this small learning cluster:
 | cost-model | `200m`, `256Mi` | `750m`, `1Gi` |
 | aggregator | `100m`, `256Mi` | `500m`, `1Gi` |
 | cloud-cost | `50m`, `128Mi` | `250m`, `512Mi` |
-| Prometheus | `100m`, `256Mi` | `500m`, `1Gi` |
 
 The `1Gi` limits are retained as burst ceilings for query/ETL and time-series
 workloads; their requests remain `256Mi`, so the scheduler does not reserve
@@ -118,6 +123,14 @@ kubectl -n kubecost get pods,deployments,statefulsets,services,pvc
 kubectl -n kubecost describe pvc
 kubectl -n kubecost logs deployment/kubecost-cost-analyzer -c cost-model
 kubectl -n kubecost port-forward service/kubecost-cost-analyzer 9090:9090
+```
+
+Confirm the core Prometheus discovered Kubecost's ServiceMonitor (DEP-319):
+
+```sh
+kubectl -n kubecost get servicemonitor kubecost-cost-analyzer \
+  -o jsonpath='{.metadata.labels.release}{"\n"}'   # must print prometheus-stack
+# In the Prometheus UI (Status > Targets), the kubecost cost-model target is Up.
 ```
 
 Open `http://localhost:9090` during the port-forward. Verify Allocation views by
