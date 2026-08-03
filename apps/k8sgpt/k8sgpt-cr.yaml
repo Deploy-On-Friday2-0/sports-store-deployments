@@ -24,7 +24,7 @@ spec:
 apiVersion: core.k8sgpt.ai/v1alpha1
 kind: K8sGPT
 metadata:
-  name: k8sgpt-prod
+  name: k8sgpt-default
   namespace: k8sgpt-operator 
 spec:
   ai:
@@ -34,9 +34,97 @@ spec:
     secret:
       name: k8sgpt-secrets
       key: google-api-key
-  autoAnalysis: true  # Automatically performs scans continuously
   noCache: false
-  targetNamespace: sports-store
+  targetNamespace: default
+  analysis:
+    interval: 30s
+  filters:
+    - Pod
+    - Event
+    - Ingress
+    - Service
+    - Deployment
+  sink:
+    type: slack
+    secret:
+      name: k8sgpt-secrets
+      key: slack-webhook-url
+---
+apiVersion: core.k8sgpt.ai/v1alpha1
+kind: K8sGPT
+metadata:
+  name: k8sgpt-apps
+  namespace: k8sgpt-operator 
+spec:
+  ai:
+    enabled: true
+    model: gemini-1.5-flash
+    backend: google
+    secret:
+      name: k8sgpt-secrets
+      key: google-api-key
+  noCache: false
+  targetNamespace: apps
+  analysis:
+    interval: 30s
+  filters:
+    - Pod
+    - Event
+    - Ingress
+    - Service
+    - Deployment
+  sink:
+    type: slack
+    secret:
+      name: k8sgpt-secrets
+      key: slack-webhook-url
+---
+apiVersion: core.k8sgpt.ai/v1alpha1
+kind: K8sGPT
+metadata:
+  name: k8sgpt-monitoring
+  namespace: k8sgpt-operator 
+spec:
+  ai:
+    enabled: true
+    model: gemini-1.5-flash
+    backend: google
+    secret:
+      name: k8sgpt-secrets
+      key: google-api-key
+  noCache: false
+  targetNamespace: monitoring
+  analysis:
+    interval: 30s
+  filters:
+    - Pod
+    - Event
+    - Ingress
+    - Service
+    - Deployment
+  sink:
+    type: slack
+    secret:
+      name: k8sgpt-secrets
+      key: slack-webhook-url
+---
+apiVersion: core.k8sgpt.ai/v1alpha1
+kind: K8sGPT
+metadata:
+  name: k8sgpt-logging
+  namespace: k8sgpt-operator 
+spec:
+  ai:
+    enabled: true
+    model: gemini-1.5-flash
+    backend: google
+    secret:
+      name: k8sgpt-secrets
+      key: google-api-key
+  noCache: false
+  targetNamespace: logging
+  analysis:
+    interval: 30s
   filters:
     - Pod
     - Event
