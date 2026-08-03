@@ -36,16 +36,23 @@ breaking image tag ─▶ Argo Rollout canary fails ─▶ Rollout aborts (Degra
 ```
 
 The script is reversible and self-cleaning (it always restores the original
-image and re-enables Argo CD auto-sync on exit). It:
-1. pauses auto-sync on `sports-store-production` (so self-heal doesn't fight the drill),
-2. sets a non-existent tag (`…:9.9.9-dep271-drill-broken`) → `ImagePullBackOff`,
-3. waits for the Rollout to go `Degraded`/`Aborted`,
-4. asserts a `results.core.k8sgpt.ai` object for `sports-store`/`catalog` appears within 180s,
-5. undoes the Rollout and restores auto-sync.
+image, Rollout settings, and Argo CD auto-sync on exit). It:
+1. pauses auto-sync on the workload's **per-service** Application
+   (`production-<service>-service`, e.g. `production-catalog-service` — DEP-248
+   split production into one Application per workload),
+2. **arms a deterministic abort**: shortens the Rollout's
+   `progressDeadlineSeconds` (default 60s) and sets `progressDeadlineAbort: true`,
+3. sets a non-existent tag (`…:9.9.9-dep271-drill-broken`) → `ImagePullBackOff`;
+   the stuck canary then aborts once the shortened deadline trips (instead of
+   sitting `Progressing` for the normal ~10-minute deadline),
+4. **once the abort is detected, starts a fresh 3-minute SLA timer** and asserts
+   a `results.core.k8sgpt.ai` object for `sports-store`/`catalog` appears within
+   180s **of the abort**,
+5. restores the Rollout settings + image, undoes the Rollout, and restores auto-sync.
 
 ## Pass criteria & evidence
-- ✅ Rollout reaches `Degraded`/`Aborted`.
-- ✅ A K8sGPT `Result` for the failing workload appears **< 3 min** (script asserts this).
+- ✅ Rollout reaches `Degraded`/`Aborted` (deterministically, via the shortened progress deadline).
+- ✅ A K8sGPT `Result` for the failing workload appears **< 3 min of the abort** (script asserts this).
 - ✅ A root-cause message is posted to **`#k8s-ai-diagnostics`** — **screenshot it** (timestamp visible) and attach to DEP-271. This is the human-verified half; kubectl can confirm the `Result`, not the Slack delivery.
 
 ## Manual / GitOps variant (optional, fully end-to-end)
@@ -59,6 +66,8 @@ Instead of patching the Rollout, commit the breaking tag through GitOps:
 - If it is killed uncleanly, manually run:
   ```bash
   kubectl argo rollouts undo catalog -n sports-store
-  kubectl -n argocd patch application sports-store-production --type merge \
+  kubectl -n sports-store patch rollout catalog --type merge \
+    -p '{"spec":{"progressDeadlineSeconds":600,"progressDeadlineAbort":false}}'
+  kubectl -n argocd patch application production-catalog-service --type merge \
     -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
   ```
