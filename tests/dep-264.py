@@ -42,9 +42,17 @@ def main():
         fail("Loki destination namespace should be 'logging'")
 
     loki_values = yaml.safe_load(loki.get("spec", {}).get("source", {}).get("helm", {}).get("values", "")) or {}
-    storage_class = loki_values.get("singleBinary", {}).get("persistence", {}).get("storageClassName")
+    # The grafana/loki chart reads singleBinary.persistence.storageClass;
+    # storageClassName is silently ignored, so assert the key the chart uses.
+    persistence = loki_values.get("singleBinary", {}).get("persistence", {})
+    storage_class = persistence.get("storageClass")
     if storage_class != "ebs-gp3-retain":
-        fail(f"Loki storageClassName should be 'ebs-gp3-retain', got {storage_class}")
+        fail(f"Loki singleBinary.persistence.storageClass should be 'ebs-gp3-retain', got {storage_class}")
+
+    if loki_values.get("deploymentMode") != "SingleBinary":
+        fail("Loki deploymentMode should be 'SingleBinary' (otherwise the chart aborts on mixed replicas)")
+    if not loki_values.get("loki", {}).get("schemaConfig", {}).get("configs"):
+        fail("Loki is missing loki.schemaConfig.configs (chart aborts without a schema_config)")
 
     # Assert Alloy
     if alloy.get("spec", {}).get("project") != "default":
