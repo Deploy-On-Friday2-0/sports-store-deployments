@@ -1,0 +1,22 @@
+suite: Redis Sentinel EKS persistence contract
+release:
+  name: sports-store
+  namespace: sports-store
+values:
+  - ../values-eks.yaml
+templates:
+  - charts/redis/templates/sentinel/statefulset.yaml
+tests:
+  - it: retains Sentinel claims when the StatefulSet is deleted or scaled down
+    asserts:
+      - isKind:
+          of: StatefulSet
+      - equal:
+          path: spec.persistentVolumeClaimRetentionPolicy.whenDeleted
+          value: Retain
+      - equal:
+          path: spec.persistentVolumeClaimRetentionPolicy.whenScaled
+          value: Retain
+      - equal:
+          path: spec.volumeClaimTemplates[0].spec.storageClassName
+          value: ebs-gp3-retain

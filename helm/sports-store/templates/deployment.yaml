@@ -7,6 +7,7 @@
 # request that arrives before Mongo is reachable fails and self-heals on
 # the next one, the same behavior verified in Stage 2/DEP-159.
 {{- range $name, $svc := .Values.services }}
+{{- if has $name $.Values.enabledServices }}
 {{- $tag := required (printf "services.%s.tag must be set" $name) $svc.tag }}
 {{- if not (regexMatch "^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$" (toString $tag)) }}
 {{- fail (printf "services.%s.tag is not a valid container image tag" $name) }}
@@ -68,4 +69,5 @@ spec:
             failureThreshold: 8
           resources:
             {{- toYaml $svc.resources | nindent 12 }}
+{{- end }}
 {{- end }}

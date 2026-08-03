@@ -1,23 +1,202 @@
+# DEP-248 production App-of-Apps children. Sync waves order databases before
+# first-party services; only MongoDB creates the shared namespace.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: sports-store-production
+  name: argo-rollouts
   namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "-3"}
 spec:
-  project: default
+  project: sports-store-project
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    chart: argo-rollouts
+    targetRevision: 2.41.1
+    helm:
+      releaseName: argo-rollouts
+      values: |
+        installCRDs: true
+        keepCRDs: true
+        clusterInstall: true
+        dashboard: {enabled: false}
+  destination: {server: https://kubernetes.default.svc, namespace: argo-rollouts}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: production-mongodb
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "-2"}
+spec:
+  project: sports-store-project
   source:
     repoURL: https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git
     targetRevision: main
     path: helm/sports-store
     helm:
-      valueFiles:
-        - values-eks.yaml
-        - ../../environments/production/images/auth-service.yaml
-        - ../../environments/production/images/cart-service.yaml
-        - ../../environments/production/images/catalog-service.yaml
-        - ../../environments/production/images/order-service.yaml
-        - ../../environments/production/images/payment-service.yaml
-        - ../../environments/production/images/gateway.yaml
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: sports-store
+      releaseName: sports-store
+      valueFiles: [values-eks.yaml]
+      values: |
+        enabledServices: []
+        ingress: {enabled: false}
+        redis: {enabled: false}
+  destination: {server: https://kubernetes.default.svc, namespace: sports-store}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: production-redis-sentinel
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "-1"}
+spec:
+  project: sports-store-project
+  source:
+    repoURL: https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git
+    targetRevision: main
+    path: helm/sports-store
+    helm:
+      releaseName: sports-store
+      valueFiles: [values-eks.yaml]
+      values: |
+        enabledServices: []
+        platform: {externalSecret: false, mongodbInit: false}
+        ingress: {enabled: false}
+        mongodb: {enabled: false}
+  destination: {server: https://kubernetes.default.svc, namespace: sports-store}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+---
+# Each backend Application selects one workload from the repository's existing
+# parent chart. This avoids duplicate resource ownership while preserving the
+# image value-file promotion contract.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: production-auth-service, namespace: argocd, annotations: {argocd.argoproj.io/sync-wave: "0"}}
+spec:
+  project: sports-store-project
+  source:
+    repoURL: https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git
+    targetRevision: main
+    path: helm/sports-store
+    helm:
+      releaseName: sports-store
+      valueFiles: [values-eks.yaml, ../../environments/production/images/auth-service.yaml]
+      values: |
+        enabledServices: [auth]
+        ingress: {enabled: false}
+        platform: {externalSecret: false, mongodbInit: false}
+        mongodb: {enabled: false}
+        redis: {enabled: false}
+  destination: {server: https://kubernetes.default.svc, namespace: sports-store}
+  syncPolicy: {automated: {prune: true, selfHeal: true}}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: production-cart-service, namespace: argocd, annotations: {argocd.argoproj.io/sync-wave: "0"}}
+spec:
+  project: sports-store-project
+  source:
+    repoURL: https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git
+    targetRevision: main
+    path: helm/sports-store
+    helm:
+      releaseName: sports-store
+      valueFiles: [values-eks.yaml, ../../environments/production/images/cart-service.yaml]
+      values: |
+        enabledServices: [cart]
+        ingress: {enabled: false}
+        platform: {externalSecret: false, mongodbInit: false}
+        mongodb: {enabled: false}
+        redis: {enabled: false}
+  destination: {server: https://kubernetes.default.svc, namespace: sports-store}
+  syncPolicy: {automated: {prune: true, selfHeal: true}}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: production-catalog-service, namespace: argocd, annotations: {argocd.argoproj.io/sync-wave: "0"}}
+spec:
+  project: sports-store-project
+  source:
+    repoURL: https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git
+    targetRevision: main
+    path: helm/sports-store
+    helm:
+      releaseName: sports-store
+      valueFiles: [values-eks.yaml, ../../environments/production/images/catalog-service.yaml]
+      values: |
+        enabledServices: [catalog]
+        ingress: {enabled: false}
+        platform: {externalSecret: false, mongodbInit: false}
+        mongodb: {enabled: false}
+        redis: {enabled: false}
+  destination: {server: https://kubernetes.default.svc, namespace: sports-store}
+  syncPolicy: {automated: {prune: true, selfHeal: true}}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: production-order-service, namespace: argocd, annotations: {argocd.argoproj.io/sync-wave: "0"}}
+spec:
+  project: sports-store-project
+  source:
+    repoURL: https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git
+    targetRevision: main
+    path: helm/sports-store
+    helm:
+      releaseName: sports-store
+      valueFiles: [values-eks.yaml, ../../environments/production/images/order-service.yaml]
+      values: |
+        enabledServices: [order]
+        ingress: {enabled: false}
+        platform: {externalSecret: false, mongodbInit: false}
+        mongodb: {enabled: false}
+        redis: {enabled: false}
+  destination: {server: https://kubernetes.default.svc, namespace: sports-store}
+  syncPolicy: {automated: {prune: true, selfHeal: true}}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: production-payment-service, namespace: argocd, annotations: {argocd.argoproj.io/sync-wave: "0"}}
+spec:
+  project: sports-store-project
+  source:
+    repoURL: https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git
+    targetRevision: main
+    path: helm/sports-store
+    helm:
+      releaseName: sports-store
+      valueFiles: [values-eks.yaml, ../../environments/production/images/payment-service.yaml]
+      values: |
+        enabledServices: [payment]
+        ingress: {enabled: false}
+        platform: {externalSecret: false, mongodbInit: false}
+        mongodb: {enabled: false}
+        redis: {enabled: false}
+  destination: {server: https://kubernetes.default.svc, namespace: sports-store}
+  syncPolicy: {automated: {prune: true, selfHeal: true}}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: {name: production-gateway, namespace: argocd, annotations: {argocd.argoproj.io/sync-wave: "1"}}
+spec:
+  project: sports-store-project
+  source:
+    repoURL: https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git
+    targetRevision: main
+    path: helm/sports-store
+    helm:
+      releaseName: sports-store
+      valueFiles: [values-eks.yaml, ../../environments/production/images/gateway.yaml]
+      values: |
+        enabledServices: [gateway]
+        ingressServices: [auth, catalog, cart, order, payment]
+        platform: {externalSecret: false, mongodbInit: false}
+        mongodb: {enabled: false}
+        redis: {enabled: false}
+  destination: {server: https://kubernetes.default.svc, namespace: sports-store}
+  syncPolicy: {automated: {prune: true, selfHeal: true}}

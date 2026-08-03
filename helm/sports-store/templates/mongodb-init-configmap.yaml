@@ -2,6 +2,7 @@
 # normalized) — do not hand-edit the script content below; regenerate
 # this file if the seed script changes. Name (mongodb-init-script) is
 # referenced statically by values.yaml's mongodb.extraVolumes.
+{{- if .Values.platform.mongodbInit }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -64,7 +65,6 @@ data:
         created_at: now,
       };
     }
-    
     function variant(sku, color, size, price, stock) {
       return { sku, color, size, price, stock_quantity: stock };
     }
@@ -265,3 +265,4 @@ data:
     } else {
       print(`Admin user already present: ${ADMIN_USER.email}`);
     }
+{{- end }}

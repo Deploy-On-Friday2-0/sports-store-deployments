@@ -4,6 +4,31 @@
 
 imagePullPolicy: IfNotPresent
 
+# An Argo CD child Application can select one workload while retaining this
+# chart as the repository's single deployment contract. An empty list renders
+# no first-party Deployments or Services. Defaults preserve the full-chart
+# local development experience.
+enabledServices:
+  - frontend
+  - gateway
+  - auth
+  - catalog
+  - cart
+  - order
+  - payment
+
+ingressServices:
+  - frontend
+  - auth
+  - catalog
+  - cart
+  - order
+  - payment
+
+platform:
+  externalSecret: true
+  mongodbInit: true
+
 containerSecurityContext:
   runAsNonRoot: true
   runAsUser: 10001
@@ -19,6 +44,7 @@ ingress:
 # Same settings verified working in DEP-159's standalone mongodb-values.yaml.
 # ---------------------------------------------------------------------
 mongodb:
+  enabled: true
   architecture: replicaset
   replicaSetName: rs0
   replicaCount: 3
@@ -264,6 +290,7 @@ services:
         memory: 256Mi
 
 redis:
+  enabled: true
   architecture: replication
   auth:
     enabled: true
@@ -272,6 +299,14 @@ redis:
   sentinel:
     enabled: true
     masterSet: mymaster
+    persistentVolumeClaimRetentionPolicy:
+      enabled: true
+      whenScaled: Retain
+      whenDeleted: Retain
+    persistence:
+      enabled: true
+      storageClass: standard
+      size: 8Gi
   master:
     affinity:
       podAntiAffinity:

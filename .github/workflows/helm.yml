@@ -5,18 +5,24 @@ on:
     paths:
       - ".github/workflows/helm.yml"
       - "apps/sports-store-production.yaml"
+      - "apps/root-app.yaml"
+      - "projects/**"
       - "bootstrap/**"
       - "environments/production/images/**"
       - "helm/sports-store/**"
       - "tests/dep-239.sh"
+      - "tests/dep-248.sh"
   push:
     paths:
       - ".github/workflows/helm.yml"
       - "apps/sports-store-production.yaml"
+      - "apps/root-app.yaml"
+      - "projects/**"
       - "bootstrap/**"
       - "environments/production/images/**"
       - "helm/sports-store/**"
       - "tests/dep-239.sh"
+      - "tests/dep-248.sh"
 
 permissions:
   contents: read
@@ -73,4 +79,6 @@ jobs:
         working-directory: helm/sports-store
         run: helm unittest --strict .
       - name: Test controller bootstrap
-        run: bash tests/dep-239.sh
+        run: |
+          bash tests/dep-239.sh
+          bash tests/dep-248.sh

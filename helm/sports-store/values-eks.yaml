@@ -21,6 +21,17 @@ mongodb:
       - ReadWriteOnce
     size: 8Gi
 
+redis:
+  sentinel:
+    persistentVolumeClaimRetentionPolicy:
+      enabled: true
+      whenScaled: Retain
+      whenDeleted: Retain
+    persistence:
+      enabled: true
+      storageClass: ebs-gp3-retain
+      size: 8Gi
+
 ingress:
   className: alb
   annotations:
