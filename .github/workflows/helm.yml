@@ -13,6 +13,7 @@ on:
       - "helm/sports-store/**"
       - "tests/dep-239.sh"
       - "tests/dep-248.sh"
+      - "tests/dep-251.sh"
       - "tests/dep-238.sh"
   push:
     paths:
@@ -26,6 +27,7 @@ on:
       - "helm/sports-store/**"
       - "tests/dep-239.sh"
       - "tests/dep-248.sh"
+      - "tests/dep-251.sh"
       - "tests/dep-238.sh"
 
 permissions:
@@ -87,3 +89,4 @@ jobs:
           bash tests/dep-238.sh
           bash tests/dep-239.sh
           bash tests/dep-248.sh
+          bash tests/dep-251.sh
