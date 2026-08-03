@@ -136,3 +136,35 @@ spec:
     secret:
       name: k8sgpt-secrets
       key: slack-webhook-url
+---
+# DEP-271 prerequisite - the sports-store workloads (incl. the catalog/order
+# Argo Rollouts) run in the sports-store namespace, so K8sGPT must analyse it
+# for an aborted rollout to produce a root-cause analysis in Slack.
+apiVersion: core.k8sgpt.ai/v1alpha1
+kind: K8sGPT
+metadata:
+  name: k8sgpt-sports-store
+  namespace: k8sgpt-operator
+spec:
+  ai:
+    enabled: true
+    model: gemini-1.5-flash
+    backend: google
+    secret:
+      name: k8sgpt-secrets
+      key: google-api-key
+  noCache: false
+  targetNamespace: sports-store
+  analysis:
+    interval: 30s
+  filters:
+    - Pod
+    - Event
+    - Ingress
+    - Service
+    - Deployment
+  sink:
+    type: slack
+    secret:
+      name: k8sgpt-secrets
+      key: slack-webhook-url
