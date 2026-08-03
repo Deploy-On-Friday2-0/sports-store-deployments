@@ -39,6 +39,22 @@ ingress:
   enabled: true
   className: nginx
 
+# Prometheus scraping (DEP-263, Sub-PRD 7 2.1.2). The ServiceMonitor selects
+# every Service labeled app.kubernetes.io/part-of: sports-store and scrapes the
+# port named `http-metrics`; only backend services with `metrics: true` expose
+# that named port, so frontend/gateway are skipped automatically.
+monitoring:
+  serviceMonitor:
+    # Off by default so the chart does not require the Prometheus Operator CRDs
+    # in non-EKS environments; values-eks.yaml turns it on.
+    enabled: false
+    interval: 15s
+    path: /metrics
+    # kube-prometheus-stack's Prometheus only discovers ServiceMonitors carrying
+    # its Helm release label (serviceMonitorSelectorNilUsesHelmValues=true by
+    # default). This matches the release name set in apps/monitoring/.
+    releaseLabel: prometheus-stack
+
 mongodb:
   enabled: true
   architecture: replicaset
@@ -131,6 +147,7 @@ services:
     image: sports-store-auth-service
     tag: v1.0.0
     port: 8001
+    metrics: true
     replicas: 1
     healthPath: /health
     ingressPath: /api/auth
@@ -166,6 +183,7 @@ services:
     image: sports-store-catalog-service
     tag: v1.0.0
     port: 8002
+    metrics: true
     replicas: 1
     healthPath: /health
     ingressPath: /api/products
@@ -188,6 +206,7 @@ services:
     image: sports-store-cart-service
     tag: v1.0.0
     port: 8003
+    metrics: true
     replicas: 1
     healthPath: /health
     ingressPath: /api/cart
@@ -218,6 +237,7 @@ services:
     image: sports-store-order-service
     tag: v1.0.0
     port: 8004
+    metrics: true
     replicas: 1
     healthPath: /health
     ingressPath: /api/orders
@@ -250,6 +270,7 @@ services:
     image: sports-store-payment-service
     tag: v1.0.0
     port: 8005
+    metrics: true
     replicas: 1
     healthPath: /health
     ingressPath: /api/payments

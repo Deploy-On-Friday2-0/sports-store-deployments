@@ -1,4 +1,41 @@
-{{- if .Values.mongodb.enabled }}
+# DEP-263 (Sub-PRD 7 2.1.2) - ServiceMonitors for the Sports Store platform.
+# Each monitor is an INDEPENDENT conditional so that, under the DEP-248
+# multi-release layout (one Argo Application per workload, all sharing
+# values-eks.yaml), each is owned by exactly one release:
+#   * the shared backend monitor renders only where
+#     monitoring.serviceMonitor.enabled is set (the production-mongodb release,
+#     which already owns the platform singletons) - never globally;
+#   * the MongoDB / Redis monitors render only in the release that actually
+#     deploys that dependency (<dep>.enabled AND <dep>.metrics.enabled).
+# All carry the shared release label so the DEP-262 Prometheus discovers them.
+{{- if .Values.monitoring.serviceMonitor.enabled }}
+# Backend microservices: scrape every Service labeled
+# app.kubernetes.io/part-of: sports-store on the http-metrics port. Services
+# without that named port (frontend/gateway) produce no scrape target.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: sports-store-servicemonitors
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sports-store.labels" . | nindent 4 }}
+    release: {{ .Values.monitoring.serviceMonitor.releaseLabel }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: sports-store
+  endpoints:
+    - port: http-metrics
+      path: {{ .Values.monitoring.serviceMonitor.path }}
+      interval: {{ .Values.monitoring.serviceMonitor.interval }}
+      scheme: http
+{{- end }}
+{{- if and .Values.mongodb.enabled (.Values.mongodb.metrics | default dict).enabled }}
+---
+# MongoDB exporter (DEP-294) - owned by the release that deploys MongoDB.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -6,7 +43,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "sports-store.labels" . | nindent 4 }}
-    release: prometheus
+    release: {{ .Values.monitoring.serviceMonitor.releaseLabel }}
 spec:
   selector:
     matchLabels:
@@ -15,10 +52,11 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
   endpoints:
     - port: http-metrics
-      interval: 15s
+      interval: {{ .Values.monitoring.serviceMonitor.interval }}
 {{- end }}
+{{- if and .Values.redis.enabled (.Values.redis.metrics | default dict).enabled }}
 ---
-{{- if .Values.redis.enabled }}
+# Redis exporter (DEP-294) - owned by the release that deploys Redis.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -26,7 +64,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "sports-store.labels" . | nindent 4 }}
-    release: prometheus
+    release: {{ .Values.monitoring.serviceMonitor.releaseLabel }}
 spec:
   selector:
     matchLabels:
@@ -35,5 +73,5 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
   endpoints:
     - port: http-metrics
-      interval: 15s
+      interval: {{ .Values.monitoring.serviceMonitor.interval }}
 {{- end }}

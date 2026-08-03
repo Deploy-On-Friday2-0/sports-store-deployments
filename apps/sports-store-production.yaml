@@ -19,6 +19,9 @@ spec:
         enabledServices: []
         ingress: {enabled: false}
         redis: {enabled: false}
+        # Single owner of the shared platform-wide backend ServiceMonitor
+        # (this release already owns the other platform singletons).
+        monitoring: {serviceMonitor: {enabled: true}}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
   syncPolicy:
     automated: {prune: true, selfHeal: true}
