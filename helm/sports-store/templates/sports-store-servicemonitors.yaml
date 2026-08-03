@@ -1,29 +1,35 @@
-# DEP-263 (Sub-PRD 7 2.1.2) - single ServiceMonitor covering every backend
-# microservice. It selects Services labeled app.kubernetes.io/part-of:
-# sports-store and scrapes the `http-metrics` port every 15s. Frontend/gateway
-# carry the part-of label too, but have no `http-metrics` port, so the operator
-# generates no scrape target for them.
-{{- if .Values.monitoring.serviceMonitor.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: sports-store-servicemonitors
+  name: {{ .Release.Name }}-mongodb-metrics
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "sports-store.labels" . | nindent 4 }}
-    # kube-prometheus-stack's Prometheus only discovers ServiceMonitors that
-    # carry its release label (serviceMonitorSelectorNilUsesHelmValues=true).
-    release: {{ .Values.monitoring.serviceMonitor.releaseLabel }}
+    release: prometheus
 spec:
-  namespaceSelector:
-    matchNames:
-      - {{ .Release.Namespace }}
   selector:
     matchLabels:
-      app.kubernetes.io/part-of: sports-store
+      app.kubernetes.io/component: metrics
+      app.kubernetes.io/name: mongodb
+      app.kubernetes.io/instance: {{ .Release.Name }}
   endpoints:
     - port: http-metrics
-      path: {{ .Values.monitoring.serviceMonitor.path }}
-      interval: {{ .Values.monitoring.serviceMonitor.interval }}
-      scheme: http
-{{- end }}
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}-redis-metrics
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sports-store.labels" . | nindent 4 }}
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: metrics
+      app.kubernetes.io/name: redis
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  endpoints:
+    - port: http-metrics
+      interval: 15s
