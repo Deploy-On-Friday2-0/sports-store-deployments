@@ -43,11 +43,12 @@ ruby -ryaml -e '
 
 ruby -ryaml -e '
   values = YAML.safe_load_file(ARGV[0], aliases: true)
+  eks = YAML.safe_load_file(ARGV[1], aliases: true)
   retain = {"enabled" => true, "whenScaled" => "Retain", "whenDeleted" => "Retain"}
   abort "MongoDB PVCs are not retained" unless values.dig("mongodb", "persistentVolumeClaimRetentionPolicy") == retain
   abort "Redis Sentinel PVCs are not retained" unless values.dig("redis", "sentinel", "persistentVolumeClaimRetentionPolicy") == retain
-  abort "MongoDB is not on retain storage" unless values.dig("mongodb", "persistence", "storageClass") == "ebs-gp3-retain"
-  abort "Redis is not on retain storage" unless values.dig("redis", "sentinel", "persistence", "storageClass") == "ebs-gp3-retain"
-' "$repo_root/helm/sports-store/values-eks.yaml"
+  abort "MongoDB is not on retain storage" unless eks.dig("mongodb", "persistence", "storageClass") == "ebs-gp3-retain"
+  abort "Redis is not on retain storage" unless eks.dig("redis", "sentinel", "persistence", "storageClass") == "ebs-gp3-retain"
+' "$repo_root/helm/sports-store/values.yaml" "$repo_root/helm/sports-store/values-eks.yaml"
 
 printf 'DEP-248 manifest tests passed.\n'
