@@ -67,6 +67,8 @@ spec:
       kind: RoleBinding
     - group: external-secrets.io
       kind: ExternalSecret
+    - group: monitoring.coreos.com
+      kind: ServiceMonitor
     - group: argoproj.io
       kind: AnalysisRun
     - group: argoproj.io

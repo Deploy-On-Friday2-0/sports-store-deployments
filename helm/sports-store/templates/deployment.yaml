@@ -1,5 +1,5 @@
 {{- range $name, $svc := .Values.services }}
-{{- if $svc.enabled }}
+{{- if and $svc.enabled (has $name $.Values.enabledServices) }}
 {{- $tag := required (printf "services.%s.tag must be set" $name) $svc.tag }}
 {{- if not (regexMatch "^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$" (toString $tag)) }}
 {{- fail (printf "services.%s.tag is not a valid container image tag" $name) }}
@@ -56,6 +56,9 @@ spec:
           imagePullPolicy: {{ $.Values.imagePullPolicy }}
           ports:
             - containerPort: {{ $svc.port }}
+              {{- if $svc.metrics }}
+              name: http-metrics
+              {{- end }}
           {{- if $svc.env }}
           env:
             {{- range $svc.env }}

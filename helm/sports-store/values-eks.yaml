@@ -17,6 +17,21 @@ mongodb:
     accessModes:
       - ReadWriteOnce
     size: 8Gi
+  metrics:
+    enabled: true
+
+redis:
+  metrics:
+    enabled: true
+  sentinel:
+    persistentVolumeClaimRetentionPolicy:
+      enabled: true
+      whenScaled: Retain
+      whenDeleted: Retain
+    persistence:
+      enabled: true
+      storageClass: ebs-gp3-retain
+      size: 8Gi
 
 ingress:
   className: alb
@@ -31,4 +46,11 @@ services:
     enabled: false
   frontend:
     enabled: false
+
+# NOTE: the shared backend ServiceMonitor is intentionally NOT enabled here.
+# values-eks.yaml is shared by every DEP-248 production release, so enabling it
+# globally would make all of them fight to own the single fixed-name resource.
+# It is enabled in exactly one owning release (production-mongodb) instead.
+# The MongoDB/Redis exporter monitors self-gate on <dep>.enabled +
+# <dep>.metrics.enabled, so they render only in their owning release.
 

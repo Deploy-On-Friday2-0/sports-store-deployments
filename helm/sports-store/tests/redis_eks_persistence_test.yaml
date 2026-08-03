@@ -1,0 +1,24 @@
+suite: Redis Sentinel EKS persistence contract
+release:
+  name: sports-store
+  namespace: sports-store
+values:
+  - ../values-eks.yaml
+templates:
+  - charts/redis/templates/sentinel/statefulset.yaml
+  - charts/redis/templates/configmap.yaml
+  - charts/redis/templates/health-configmap.yaml
+  - charts/redis/templates/scripts-configmap.yaml
+  - charts/redis/templates/secret.yaml
+tests:
+  - it: retains Sentinel claims when the StatefulSet is deleted or scaled down
+    template: charts/redis/templates/sentinel/statefulset.yaml
+    asserts:
+      - isKind:
+          of: StatefulSet
+      - equal:
+          path: spec.persistentVolumeClaimRetentionPolicy.whenDeleted
+          value: Retain
+      - equal:
+          path: spec.persistentVolumeClaimRetentionPolicy.whenScaled
+          value: Retain
