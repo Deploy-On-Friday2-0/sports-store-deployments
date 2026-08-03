@@ -19,10 +19,13 @@ spec:
         enabledServices: []
         ingress: {enabled: false}
         redis: {enabled: false}
+        # Single owner of the shared platform-wide backend ServiceMonitor
+        # (this release already owns the other platform singletons).
+        monitoring: {serviceMonitor: {enabled: true}}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
   syncPolicy:
     automated: {prune: true, selfHeal: true}
-    syncOptions: [CreateNamespace=true]
+    syncOptions: [CreateNamespace=true, ApplyOutOfSyncOnly=true]
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -49,6 +52,7 @@ spec:
     automated: {prune: true, selfHeal: true}
     syncOptions:
       - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
 ---
 # Each backend Application selects one workload from the repository's existing
 # parent chart. This avoids duplicate resource ownership while preserving the
@@ -76,6 +80,7 @@ spec:
     automated: {prune: true, selfHeal: true}
     syncOptions:
       - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -100,6 +105,7 @@ spec:
     automated: {prune: true, selfHeal: true}
     syncOptions:
       - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -125,6 +131,7 @@ spec:
     automated: {prune: true, selfHeal: true}
     syncOptions:
       - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -150,6 +157,7 @@ spec:
     automated: {prune: true, selfHeal: true}
     syncOptions:
       - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -174,6 +182,7 @@ spec:
     automated: {prune: true, selfHeal: true}
     syncOptions:
       - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -199,3 +208,4 @@ spec:
     automated: {prune: true, selfHeal: true}
     syncOptions:
       - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true

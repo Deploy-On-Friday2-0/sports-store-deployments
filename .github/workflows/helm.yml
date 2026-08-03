@@ -7,26 +7,34 @@ on:
       - "apps/sports-store-production.yaml"
       - "apps/root-app.yaml"
       - "apps/argo-rollouts.yaml"
+      - "apps/infrastructure.yaml"
       - "bootstrap/**"
       - "projects/**"
       - "environments/production/images/**"
       - "helm/sports-store/**"
+      - "tests/dep-238.sh"
       - "tests/dep-239.sh"
       - "tests/dep-248.sh"
-      - "tests/dep-238.sh"
+      - "tests/dep-251.sh"
+      - "tests/dep-264.sh"
+      - "tests/dep-264.py"
   push:
     paths:
       - ".github/workflows/helm.yml"
       - "apps/sports-store-production.yaml"
       - "apps/root-app.yaml"
       - "apps/argo-rollouts.yaml"
+      - "apps/infrastructure.yaml"
       - "bootstrap/**"
       - "projects/**"
       - "environments/production/images/**"
       - "helm/sports-store/**"
+      - "tests/dep-238.sh"
       - "tests/dep-239.sh"
       - "tests/dep-248.sh"
-      - "tests/dep-238.sh"
+      - "tests/dep-251.sh"
+      - "tests/dep-264.sh"
+      - "tests/dep-264.py"
 
 permissions:
   contents: read
@@ -87,3 +95,5 @@ jobs:
           bash tests/dep-238.sh
           bash tests/dep-239.sh
           bash tests/dep-248.sh
+          bash tests/dep-251.sh
+          bash tests/dep-264.sh

@@ -1,0 +1,28 @@
+# DEP-266 (Sub-PRD 7 2.2.1). Argo CD Application that reconciles the
+# observability/ kustomize directory (Grafana dashboard ConfigMap + Prometheus
+# alerting rules) into the monitoring namespace. Uses the built-in `default`
+# project because PrometheusRule is not in the locked sports-store-project
+# whitelist — the same pattern as apps/kubecost and apps/monitoring.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: observability
+    app.kubernetes.io/part-of: sports-store
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git
+    targetRevision: main
+    path: observability
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
