@@ -50,7 +50,7 @@ presentation script.
 - **Database-per-service** — no service reads another's data; they cooperate via HTTP.
 - **Everything as code** — application, cluster, and cloud are all declarative and version-controlled.
 - **GitOps** — the live cluster is continuously reconciled to Git; rollback is a `git revert`.
-- **Progressive, self-healing releases** — canary traffic shifting with automatic rollback on bad metrics.
+- **Progressive, self-healing releases** — time-paused canary traffic shifting today; a Prometheus metric-gate (`AnalysisTemplate`) is defined and ready to wire in for automatic rollback on bad metrics (see §11).
 - **Zero static credentials** — OIDC and Pod Identity everywhere; secrets live in AWS Secrets Manager, never in Git.
 
 ---
@@ -102,19 +102,29 @@ Each service is a small FastAPI app (FastAPI `0.140`, Uvicorn, async MongoDB via
 | `/api/orders` | `order:8004` |
 | `/api/payments` | `payment:8005` |
 
-> **EKS topology note.** On EKS, `helm/sports-store/values-eks.yaml` disables the
-> in-cluster gateway and frontend; the ALB Ingress routes directly to the backend
-> services and the frontend is served from S3 + CloudFront. This is a deliberate
-> cloud-native deviation from the Compose topology — see the repo README/COMPLIANCE
-> for the rationale.
+> **EKS topology note.** `helm/sports-store/values-eks.yaml` disables the gateway and
+> frontend **by default**, but the `production-gateway` Argo CD Application explicitly
+> re-enables and deploys the gateway workload (`enabledServices: [gateway]`,
+> `services.gateway.enabled: true`). The gateway pod therefore still runs on EKS. The
+> real distinction from Compose is the **request path**: the ALB `Ingress` routes
+> directly to the backend Services (`ingressServices: [auth, catalog, cart, order,
+> payment]`) and does **not** send traffic through the gateway, and the frontend is
+> served from S3 + CloudFront. This is a deliberate cloud-native deviation from the
+> Compose topology — see the repo README/COMPLIANCE for the rationale.
 
 ---
 
 ## 4. Request flow (end-to-end)
 
+The diagram below shows the **Docker Compose topology**, where the NGINX gateway is
+the single entry point and every `/api/*` request is proxied through it. On **EKS the
+request path differs**: the ALB `Ingress` routes each `/api/*` prefix directly to the
+matching backend Service and does not pass through the gateway (see the EKS topology
+note in §3).
+
 ```mermaid
 flowchart LR
-  U[Shopper] --> GW[NGINX Gateway<br/>single entry point]
+  U[Shopper] --> GW[NGINX Gateway<br/>single entry point<br/>Compose only]
   GW -->|/api/auth| A[Auth :8001]
   GW -->|/api/products| C[Catalog :8002]
   GW -->|/api/cart| K[Cart :8003]
@@ -133,7 +143,8 @@ flowchart LR
 
 **Checkout, step by step**
 
-1. The shopper hits the site; every request passes through the gateway.
+1. The shopper hits the site. Under Compose every request passes through the gateway;
+   on EKS the ALB Ingress routes each `/api/*` prefix straight to the backend Service.
 2. Browsing calls the **catalog**; adding to basket calls the **cart**, which
    verifies stock against the catalog.
 3. At checkout the **order** service orchestrates: confirm the cart → ask
@@ -275,16 +286,25 @@ order and boundaries.
 plain Deployments) for progressive canary delivery, integrated with the AWS Load
 Balancer Controller for ALB **target-group weighting**.
 
-**Traffic steps:** `10% (pause 5m) → 25% (10m) → 50% (10m) → 75% (5m) → 100%`.
+**Traffic steps** (`helm/sports-store/templates/deployment.yaml`):
+`10% (pause 1m) → 25% (pause 1m) → 50% (pause 1m) → 75% (pause 1m) → 100%`.
 
-**Automated analysis** (`helm/sports-store/templates/canary-analysis.yaml`) queries
-Prometheus in the `monitoring` namespace and aborts + rolls back if a canary
-breaches either gate:
+**Metric analysis (defined, not yet wired in).** An `AnalysisTemplate`
+(`sports-store-canary-analysis`, in `helm/sports-store/templates/canary-analysis.yaml`,
+gated behind `platform.canaryAnalysis`) is provided and queries Prometheus in the
+`monitoring` namespace for:
 
-- **Success rate ≥ 99.5%** over 5-minute windows
+- **Success rate ≥ 99.5%** — checked every 30s over a 1-minute (`[1m]`) window
   (`2xx/3xx ÷ all` on `http_requests_total`).
-- **p95 latency < 250 ms** over 5-minute windows
+- **p95 latency < 250 ms** — checked every 30s over a 1-minute (`[1m]`) window
   (`http_request_duration_seconds_bucket`).
+
+> **Current limitation.** The Rollout `steps` above contain only `setWeight` and
+> `pause` — there is **no `analysis` step referencing `sports-store-canary-analysis`**.
+> The canary therefore advances on the time-based pauses alone; the AnalysisTemplate
+> is **not** currently connected, so there is **no automated metric-gated abort or
+> rollback** yet. Wiring an `analysis` step into the Rollout is a follow-up
+> implementation change.
 
 The Argo Rollouts controller receives its AWS permissions for target-group
 weighting via **EKS Pod Identity** (`argo-rollouts/argo-rollouts` service
@@ -333,13 +353,14 @@ scope:
 **Deploy a new version of a service**
 1. Merge the service PR to `main`. `publish.yml` builds, pushes to ECR, and writes
    the new tag to `deployments/environments/production/images/‹service›.yaml`.
-2. Argo CD detects the change and syncs. For `catalog`/`order`, the Rollout runs
-   the canary analysis before promoting.
+2. Argo CD detects the change and syncs. For `catalog`/`order`, the Rollout shifts
+   traffic through the time-paused canary steps (10→25→50→75→100%) before promoting.
 
 **Roll back**
 - Revert the image-tag (or manifest) commit in `sports-store-deployments` via PR.
-  Argo CD reconciles back to the previous state. (For an in-flight canary, a failed
-  analysis rolls back automatically.)
+  Argo CD reconciles back to the previous state. (For an in-flight canary, abort it
+  manually with `kubectl argo rollouts abort <name>`; automated metric-gated rollback
+  is not yet wired in — see §11.)
 
 **Rotate / add an app secret**
 - Update the value in AWS Secrets Manager (or add the property in
@@ -364,7 +385,7 @@ scope:
 | **Kubernetes / EKS** | The system that runs containers and restarts/scales them automatically. |
 | **Terraform** | The cloud, described as code, so it's rebuildable and reviewable. |
 | **GitOps / Argo CD** | The cluster is continuously reconciled to match Git; deploys = commits. |
-| **Argo Rollouts** | Gradual, metric-gated releases with automatic rollback. |
+| **Argo Rollouts** | Controller for gradual canary releases; supports metric-gated automatic rollback (metric gate defined but not yet wired in here — see §11). |
 | **Prometheus / Grafana** | Metrics storage and dashboards. |
 | **Loki / Alloy** | Log storage and the agent that ships logs to it. |
 | **Kubecost** | Shows what each part of the cluster costs. |
