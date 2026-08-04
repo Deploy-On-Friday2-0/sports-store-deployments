@@ -70,6 +70,10 @@ try {
   Invoke-Checked kubectl apply -f bootstrap/argocd.yaml
   Invoke-Checked kubectl apply -f apps/root-app.yaml
   Invoke-Checked kubectl apply -f apps/platform-controllers.yaml
+  Invoke-Checked kubectl apply -f apps/monitoring/prometheus-stack.yaml
+  Invoke-Checked kubectl wait --for=condition=Established `
+    crd/prometheusrules.monitoring.coreos.com `
+    crd/servicemonitors.monitoring.coreos.com --timeout=5m
   Invoke-Checked kubectl apply -f apps/kubecost/kubecost.yaml
 
   Write-Host "GitOps bootstrap submitted. Inspect reconciliation with:"

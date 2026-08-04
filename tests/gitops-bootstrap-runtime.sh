@@ -22,6 +22,7 @@ for step in \
   'bootstrap/argocd.yaml' \
   'apps/root-app.yaml' \
   'apps/platform-controllers.yaml' \
+  'apps/monitoring/prometheus-stack.yaml' \
   'apps/kubecost/kubecost.yaml'; do
   assert_contains scripts/bootstrap-gitops.ps1 "$step" "bootstrap script is missing $step"
 done
