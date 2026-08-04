@@ -41,7 +41,7 @@ The upstream application workflows require:
 - repository access: `sports-store-deployments`
 - repository permission: Contents, read and write
 - protected-branch configuration allowing this App to push to `main`
-- application repository secret `GITOPS_APP_ID`
+- application repository variable `GITOPS_CLIENT_ID`
 - application repository secret `GITOPS_APP_PRIVATE_KEY`
 
 The private key and generated installation token must remain secrets. The
