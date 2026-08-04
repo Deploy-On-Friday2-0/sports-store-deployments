@@ -65,6 +65,7 @@ try {
   Invoke-Checked kubectl apply -f projects/sports-store-project.yaml
   Invoke-Checked kubectl apply -f bootstrap/argocd.yaml
   Invoke-Checked kubectl apply -f apps/root-app.yaml
+  Invoke-Checked kubectl apply -f apps/platform-controllers.yaml
   Invoke-Checked kubectl apply -f apps/kubecost/kubecost.yaml
 
   Write-Host "GitOps bootstrap submitted. Inspect reconciliation with:"
