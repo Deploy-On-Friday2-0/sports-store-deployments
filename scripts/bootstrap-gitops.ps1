@@ -51,7 +51,7 @@ try {
   if ($statusExitCode -eq 0) { $releaseStatus = ($statusJson | ConvertFrom-Json).info.status }
   if ($releaseStatus -in @("pending-install", "failed")) {
     Write-Host "Removing incomplete Argo CD release in state '$releaseStatus'."
-    Invoke-Checked helm uninstall argocd --namespace argocd --wait --timeout 5m
+    Invoke-Checked helm uninstall argocd --namespace argocd
   }
 
   $valuesFile = [IO.Path]::GetTempFileName()
@@ -59,7 +59,7 @@ try {
     Export-EmbeddedHelmValues -ManifestPath "bootstrap/argocd.yaml" -OutputPath $valuesFile
     Invoke-Checked helm upgrade --install argocd argo/argo-cd `
       --version $ArgoChartVersion --namespace argocd --create-namespace `
-      --values $valuesFile --wait --timeout 10m
+      --values $valuesFile
   }
   finally {
     Remove-Item -LiteralPath $valuesFile -Force -ErrorAction SilentlyContinue
