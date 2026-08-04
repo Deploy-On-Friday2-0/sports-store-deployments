@@ -43,8 +43,12 @@ try {
   Invoke-Checked kubectl get storageclass ebs-gp3-retain
 
   $releaseStatus = $null
-  $statusJson = helm status argocd --namespace argocd --output json 2>$null
-  if ($LASTEXITCODE -eq 0) { $releaseStatus = ($statusJson | ConvertFrom-Json).info.status }
+  $previousErrorActionPreference = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  $statusJson = & helm status argocd --namespace argocd --output json 2>$null
+  $statusExitCode = $LASTEXITCODE
+  $ErrorActionPreference = $previousErrorActionPreference
+  if ($statusExitCode -eq 0) { $releaseStatus = ($statusJson | ConvertFrom-Json).info.status }
   if ($releaseStatus -in @("pending-install", "failed")) {
     Write-Host "Removing incomplete Argo CD release in state '$releaseStatus'."
     Invoke-Checked helm uninstall argocd --namespace argocd --wait --timeout 5m
