@@ -40,7 +40,7 @@ if (-not $serverVersion.serverVersion.gitVersion) { throw "kubectl cannot reach 
 Push-Location $repositoryRoot
 try {
   Invoke-Checked kubectl apply -f bootstrap/00-namespaces.yaml
-  Invoke-Checked kubectl apply -f kubernetes/storageclasses/ebs-gp3-retain.yaml
+  Invoke-Checked kubectl get storageclass ebs-gp3-retain
 
   $releaseStatus = $null
   $statusJson = helm status argocd --namespace argocd --output json 2>$null

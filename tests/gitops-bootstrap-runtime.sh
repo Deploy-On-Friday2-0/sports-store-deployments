@@ -16,7 +16,7 @@ assert_contains() {
 
 for step in \
   'bootstrap/00-namespaces.yaml' \
-  'kubernetes/storageclasses/ebs-gp3-retain.yaml' \
+  'storageclass ebs-gp3-retain' \
   'helm upgrade --install argocd' \
   'projects/sports-store-project.yaml' \
   'bootstrap/argocd.yaml' \
