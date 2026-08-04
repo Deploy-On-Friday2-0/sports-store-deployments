@@ -161,9 +161,11 @@ flowchart LR
 - **Local:** a single `mongo:7.0.39` container hosts all databases (see §6).
 - **Production:** a **Bitnami MongoDB ReplicaSet** (3 members, `architecture:
   replicaset`, `replicaSetName: rs0`), deployed as a StatefulSet with
-  independent, retained gp3 PVCs per member. Members authenticate to each other
-  with a shared keyfile (`mongodb-replica-set-key`) sourced from AWS Secrets
-  Manager via External Secrets (see §13).
+  independent, retained gp3 PVCs per member. Members are designed to authenticate
+  to each other with a shared keyfile (`mongodb-replica-set-key`) sourced from AWS
+  Secrets Manager via External Secrets. **Pending:** the backing
+  `MONGODB_REPLICA_SET_KEY` value is not yet written by Terraform on infrastructure
+  `main` (DEP-320, PR #18 still open) — see §13.
 - Seed data: `sports-store-local/seed/init-mongo.js`.
 
 ---
@@ -203,7 +205,7 @@ hand-rolled resources.
 | `eks.tf` | EKS control plane + managed node group (AL2023); addons: `coredns`, `kube-proxy`, `vpc-cni`, `aws-ebs-csi-driver`, `eks-pod-identity-agent` (`terraform-aws-modules/eks`) |
 | `ecr.tf` | One ECR repository per deployable component, `scan_on_push` |
 | `iam.tf` | Cluster/node roles; **EKS Pod Identity** roles for EBS CSI, External Secrets, AWS Load Balancer Controller, and Argo Rollouts; GitHub Actions **OIDC** provider + ECR/frontend deploy roles |
-| `secrets.tf` | AWS Secrets Manager secret `sports-store/production/config` (write-only payload: `MONGO_INITDB_ROOT_PASSWORD`, `JWT_SECRET_KEY`, `MONGODB_REPLICA_SET_KEY`) |
+| `secrets.tf` | AWS Secrets Manager secret `sports-store/production/config`. Write-only payload on infrastructure `main` today: **`MONGO_INITDB_ROOT_PASSWORD`, `JWT_SECRET_KEY`** only. `MONGODB_REPLICA_SET_KEY` is pending in DEP-320 (infra PR #18 — open, changes requested, not yet merged) and `REDIS_PASSWORD` is not yet provisioned by any merged change — see the pending-secrets note in §13. |
 | `acm.tf` | Regional + `us-east-1` ACM certificates (DNS-validated) |
 | `frontend.tf` | S3 bucket + CloudFront distribution serving the static frontend |
 | `security.tf`, `variables.tf`, `outputs.tf` | Security groups, inputs, outputs |
@@ -334,11 +336,21 @@ scope:
 - **No secrets in Git.** All application/observability secrets live in **AWS
   Secrets Manager** and are synced into Kubernetes by the **External Secrets
   Operator (ESO)** through a `ClusterSecretStore` (`aws-secrets-manager`).
-  - App secret `sports-store/production/config` → K8s `sports-store-app-secrets`
-    (`MONGO_URI`, `JWT_SECRET`, `mongodb-root-password`, `mongodb-replica-set-key`,
-    `redis-password`).
+  - App secret `sports-store/production/config` → K8s `sports-store-app-secrets`.
+    The Helm `ExternalSecret` maps `MONGO_URI`, `JWT_SECRET`, `mongodb-root-password`,
+    `mongodb-replica-set-key`, and `redis-password`.
   - Observability secret `sports-store/production/observability` → `grafana-admin`,
     `alertmanager-slack`.
+
+> **Pending secret provisioning (known gap).** On infrastructure `main`, Terraform
+> (`sports-store-infrastructure/secrets.tf`) currently writes only
+> `MONGO_INITDB_ROOT_PASSWORD` and `JWT_SECRET_KEY` into `sports-store/production/config`.
+> The `mongodb-replica-set-key` and `redis-password` properties the `ExternalSecret`
+> above expects are **not yet present** in AWS Secrets Manager: `MONGODB_REPLICA_SET_KEY`
+> is pending in DEP-320 (infra PR #18 — open, changes requested, Terraform Cloud check
+> failing) and no merged change supplies `REDIS_PASSWORD`. Until those land, the ESO
+> sync for those two keys fails with a missing-property error. An `ExternalSecret`
+> declaring a property is not evidence that Secrets Manager contains it.
 - **Keyless access (no static credentials).**
   - In-cluster controllers (ESO, AWS LB Controller, EBS CSI, Argo Rollouts) use
     **EKS Pod Identity** associations bound to their service accounts.
