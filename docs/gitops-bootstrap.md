@@ -65,9 +65,11 @@ GitHub repository and organization settings are external to this repository.
 The required end state is protection on `main` with at least one approving
 review for human changes, plus a repository-scoped `sports-store-gitops-bot`
 whose short-lived installation tokens have only the necessary contents write
-access. `GITOPS_APP_ID` and `GITOPS_APP_PRIVATE_KEY` must be stored in GitHub
-organization secrets with access limited to the application repositories; no
-secret values belong here.
+access. Store the App's client ID as the GitHub organization variable
+`GITOPS_CLIENT_ID` and its private key as the organization secret
+`GITOPS_APP_PRIVATE_KEY`, with access limited to the application repositories.
+The client ID comes from the `sports-store-gitops-bot` App settings; no private
+key or other secret value belongs here.
 
 ## Sync, health, and rollback
 
