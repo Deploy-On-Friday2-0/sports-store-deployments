@@ -39,4 +39,14 @@ assert_contains bootstrap/00-namespaces.yaml 'name: external-secrets' \
 storage_class_count="$(rg --fixed-strings --count 'storageClass: ebs-gp3-retain' apps/kubecost/kubecost.yaml)"
 [[ "$storage_class_count" == "2" ]] || fail 'Kubecost and Prometheus must both use ebs-gp3-retain'
 
+helm template aws-load-balancer-controller eks/aws-load-balancer-controller \
+  --version 3.5.0 \
+  --namespace kube-system \
+  --set clusterName=sports-store-cluster \
+  --set serviceAccount.name=aws-load-balancer-controller >/dev/null
+helm template external-secrets external-secrets/external-secrets \
+  --version 2.8.0 \
+  --namespace external-secrets \
+  --set serviceAccount.name=external-secrets-sa >/dev/null
+
 printf 'GitOps runtime bootstrap acceptance tests passed.\n'
