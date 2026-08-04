@@ -7,12 +7,19 @@ the official Argo Helm charts:
 | --- | --- | --- | --- |
 | Argo CD | `argo-cd` | `10.2.2` | `argocd` |
 | Argo Rollouts | `argo-rollouts` | `2.41.1` | `argo-rollouts` |
+| AWS Load Balancer Controller | `aws-load-balancer-controller` | `3.5.0` | `kube-system` |
+| External Secrets Operator | `external-secrets` | `2.8.0` | `external-secrets` |
 
 `00-namespaces.yaml` owns the controller and shared platform namespaces. The Application resources retain
 `CreateNamespace=true` as a safe reconciliation fallback, but namespace
 creation does not depend on an imperative Helm flag. Apply the namespace
 manifest before registering the Applications with the cluster's bootstrap Argo
 CD instance.
+
+For a new or rebuilt cluster, run `scripts/bootstrap-gitops.ps1`. The script
+recovers an incomplete Argo CD Helm install, installs the pinned chart with the
+values embedded in `argocd.yaml`, and registers the project, root Application,
+and independently managed Kubecost Application in dependency order.
 
 Argo Rollouts is adopted by the root App-of-Apps at
 `apps/argo-rollouts.yaml`, where automated sync and self-healing are enabled.

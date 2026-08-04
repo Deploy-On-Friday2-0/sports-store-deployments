@@ -4,9 +4,10 @@
 
 The bootstrap has three layers, applied in this order:
 
-1. `bootstrap/00-namespaces.yaml` declares `argocd`, `argo-rollouts`, `apps`,
-   `monitoring`, and `logging`. The pre-existing `sports-store` namespace
-   remains owned by `k8s/00-namespace.yaml`; `default` is Kubernetes-managed.
+1. `bootstrap/00-namespaces.yaml` declares `argocd`, `argo-rollouts`,
+   `external-secrets`, `apps`, `monitoring`, and `logging`. The pre-existing
+   `sports-store` namespace remains owned by `k8s/00-namespace.yaml`; `default`
+   is Kubernetes-managed.
 2. `projects/sports-store-project.yaml` establishes the local-cluster source,
    destination, and resource boundary.
 3. `apps/root-app.yaml` reconciles the top-level downstream Application files
@@ -17,6 +18,11 @@ The root manages `sports-store-production` and `argo-rollouts`. Kubecost remains
 independently managed under `apps/kubecost/` because it belongs to the separate
 observability scope. Argo CD remains a bootstrap Application rather than a root
 child so a bad root sync cannot remove the controller that performs recovery.
+
+Run `pwsh scripts/bootstrap-gitops.ps1` from an approved operator network when
+bootstrapping a new or rebuilt cluster. The EKS API must only be opened to that
+operator's `/32` for the duration of the bootstrap and closed again after Argo
+CD has reconciled the in-cluster controllers and workloads.
 
 ## DEP-239 controller adoption
 

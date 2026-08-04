@@ -88,11 +88,17 @@ spec:
         persistentVolume:
           enabled: true
           size: 10Gi
-          # Omit storageClass to use the cluster's default StorageClass.
-          # storageClass: verified-storage-class
+          storageClass: ebs-gp3-retain
 
         service:
           type: ClusterIP
+
+        prometheus:
+          server:
+            persistentVolume:
+              enabled: true
+              size: 20Gi
+              storageClass: ebs-gp3-retain
   destination:
     server: https://kubernetes.default.svc
     namespace: kubecost
