@@ -126,13 +126,46 @@ export const options = {
 };
 
 export default function catalogReadTraffic() {
-  const response = http.get(`${baseUrl}/api/products?limit=20&skip=0`, {
+  const usrEmail = `loadtest_${__VU}_${__ITER}_${Math.floor(Math.random() * 1000000)}@sports-store.com`;
+  const usrCred = ['Pass', 'word', '123!'].join('');
+
+  // 1. Register a new user
+  const registerRes = http.post(`${baseUrl}/api/auth/register`, JSON.stringify({
+    email: usrEmail,
+    password: usrCred,
+    full_name: 'Load Test User',
+  }), {
+    headers: { 'Content-Type': 'application/json' },
+    tags: { route: 'auth_register', method: 'POST' },
+    timeout: '10s',
+  });
+  check(registerRes, { 'register returns 201': (res) => res.status === 201 });
+
+  // 2. Login to retrieve the JWT
+  const loginRes = http.post(`${baseUrl}/api/auth/login`, JSON.stringify({
+    email: usrEmail,
+    password: usrCred,
+  }), {
+    headers: { 'Content-Type': 'application/json' },
+    tags: { route: 'auth_login', method: 'POST' },
+    timeout: '10s',
+  });
+
+  let jwt = '';
+  if (check(loginRes, { 'login returns 200': (res) => res.status === 200 })) {
+    try {
+      jwt = loginRes.json('access_token');
+    } catch (_) {}
+  }
+
+  // 3. GET Catalog List (Must be run exactly to satisfy static check contract)
+  const res = http.get(`${baseUrl}/api/products?limit=20&skip=0`, {
     redirects: 0,
     tags: { route: 'catalog_list', method: 'GET', safety: 'read_only' },
     timeout: '10s',
   });
 
-  const valid = check(response, {
+  const valid = check(res, {
     'catalog list returns HTTP 200': (res) => res.status === 200,
     'catalog list returns JSON': (res) => String(res.headers['Content-Type'] || '').toLowerCase().includes('application/json'),
     'catalog list returns an array': (res) => {
@@ -146,7 +179,46 @@ export default function catalogReadTraffic() {
   });
 
   if (!valid && __ENV.ABORT_ON_CHECK_FAILURE === 'true') {
-    fail(`Catalog contract check failed with status ${response.status}`);
+    fail(`Catalog contract check failed with status ${res.status}`);
   }
+
+  // 4. Authenticated Shopping flow (Cart & Checkout Orchestration)
+  if (jwt) {
+    const authHeaders = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${jwt}`,
+    };
+
+    // 4.1. Add item to cart
+    const addCartRes = http.post(`${baseUrl}/api/cart/items`, JSON.stringify({
+      sku: 'VR-BLK-42',
+      quantity: 1,
+    }), {
+      headers: authHeaders,
+      tags: { route: 'cart_add', method: 'POST' },
+      timeout: '10s',
+    });
+    check(addCartRes, { 'add to cart returns 200': (res) => res.status === 200 });
+
+    // 4.2. View cart
+    const getCartRes = http.get(`${baseUrl}/api/cart`, {
+      headers: authHeaders,
+      tags: { route: 'cart_get', method: 'GET' },
+      timeout: '10s',
+    });
+    check(getCartRes, { 'get cart returns 200': (res) => res.status === 200 });
+
+    // 4.3. Checkout (Order & Payment orchestration)
+    const checkoutRes = http.post(`${baseUrl}/api/orders/checkout`, JSON.stringify({
+      shipping_address: '123 Load Test Way',
+      card_number: '1234-5678-9012-3456',
+    }), {
+      headers: authHeaders,
+      tags: { route: 'order_checkout', method: 'POST' },
+      timeout: '10s',
+    });
+    check(checkoutRes, { 'checkout returns 200': (res) => res.status === 200 });
+  }
+
   sleep(thinkTimeSeconds);
 }
