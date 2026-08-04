@@ -173,6 +173,10 @@ services:
             name: sports-store-redis-secrets
             key: redis-password
             optional: true
+      - name: REDIS_SENTINELS
+        value: "sports-store-redis-sentinel:26379"
+      - name: REDIS_MASTER_NAME
+        value: "mymaster"
     resources:
       requests:
         cpu: 100m
@@ -227,6 +231,10 @@ services:
             name: sports-store-redis-secrets
             key: redis-password
             optional: true
+      - name: REDIS_SENTINELS
+        value: "sports-store-redis-sentinel:26379"
+      - name: REDIS_MASTER_NAME
+        value: "mymaster"
     resources:
       requests:
         cpu: 100m
