@@ -11,7 +11,7 @@ assert_contains() {
   local file="$1"
   local value="$2"
   local description="$3"
-  rg --fixed-strings --quiet -- "$value" "$file" || fail "$description"
+  grep -Fq -- "$value" "$file" || fail "$description"
 }
 
 for step in \
@@ -36,7 +36,7 @@ assert_contains apps/platform-controllers.yaml 'name: external-secrets-sa' \
 assert_contains bootstrap/00-namespaces.yaml 'name: external-secrets' \
   'External Secrets namespace is not bootstrapped'
 
-storage_class_count="$(rg --fixed-strings --count 'storageClass: ebs-gp3-retain' apps/kubecost/kubecost.yaml)"
+storage_class_count="$(grep -Fc -- 'storageClass: ebs-gp3-retain' apps/kubecost/kubecost.yaml)"
 [[ "$storage_class_count" == "2" ]] || fail 'Kubecost and Prometheus must both use ebs-gp3-retain'
 
 helm template aws-load-balancer-controller eks/aws-load-balancer-controller \
