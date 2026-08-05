@@ -29,7 +29,7 @@ metadata:
 spec:
   ai:
     enabled: true
-    model: gemini-1.5-flash
+    model: gemini-2.5-flash
     backend: google
     secret:
       name: k8sgpt-secrets
@@ -58,7 +58,7 @@ metadata:
 spec:
   ai:
     enabled: true
-    model: gemini-1.5-flash
+    model: gemini-2.5-flash
     backend: google
     secret:
       name: k8sgpt-secrets
@@ -87,7 +87,7 @@ metadata:
 spec:
   ai:
     enabled: true
-    model: gemini-1.5-flash
+    model: gemini-2.5-flash
     backend: google
     secret:
       name: k8sgpt-secrets
@@ -116,7 +116,7 @@ metadata:
 spec:
   ai:
     enabled: true
-    model: gemini-1.5-flash
+    model: gemini-2.5-flash
     backend: google
     secret:
       name: k8sgpt-secrets
@@ -137,9 +137,6 @@ spec:
       name: k8sgpt-secrets
       key: slack-webhook-url
 ---
-# DEP-271 prerequisite - the sports-store workloads (incl. the catalog/order
-# Argo Rollouts) run in the sports-store namespace, so K8sGPT must analyse it
-# for an aborted rollout to produce a root-cause analysis in Slack.
 apiVersion: core.k8sgpt.ai/v1alpha1
 kind: K8sGPT
 metadata:
@@ -148,7 +145,7 @@ metadata:
 spec:
   ai:
     enabled: true
-    model: gemini-1.5-flash
+    model: gemini-2.5-flash
     backend: google
     secret:
       name: k8sgpt-secrets
