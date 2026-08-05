@@ -53,7 +53,7 @@ assert_namespaces() {
   ruby -ryaml -e '
     documents = YAML.load_stream(File.read(ARGV.fetch(0)))
     namespaces = documents.filter_map { |doc| doc.dig("metadata", "name") if doc["kind"] == "Namespace" }
-    expected = %w[argocd argo-rollouts apps monitoring logging]
+    expected = %w[argocd argo-rollouts external-secrets apps monitoring logging]
     abort "expected namespaces #{expected.inspect}, got #{namespaces.inspect}" unless namespaces.sort == expected.sort
   ' "$bootstrap_dir/00-namespaces.yaml"
 }

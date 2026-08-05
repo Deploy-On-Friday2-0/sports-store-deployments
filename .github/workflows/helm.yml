@@ -7,13 +7,17 @@ on:
       - "apps/sports-store-production.yaml"
       - "apps/root-app.yaml"
       - "apps/argo-rollouts.yaml"
+      - "apps/platform-controllers.yaml"
+      - "apps/kubecost/**"
       - "apps/infrastructure.yaml"
       - "bootstrap/**"
+      - "scripts/bootstrap-gitops.ps1"
       - "projects/**"
       - "environments/production/images/**"
       - "helm/sports-store/**"
       - "tests/dep-238.sh"
       - "tests/dep-239.sh"
+      - "tests/gitops-bootstrap-runtime.sh"
       - "tests/dep-248.sh"
       - "tests/dep-251.sh"
       - "tests/dep-264.sh"
@@ -27,13 +31,17 @@ on:
       - "apps/sports-store-production.yaml"
       - "apps/root-app.yaml"
       - "apps/argo-rollouts.yaml"
+      - "apps/platform-controllers.yaml"
+      - "apps/kubecost/**"
       - "apps/infrastructure.yaml"
       - "bootstrap/**"
+      - "scripts/bootstrap-gitops.ps1"
       - "projects/**"
       - "environments/production/images/**"
       - "helm/sports-store/**"
       - "tests/dep-238.sh"
       - "tests/dep-239.sh"
+      - "tests/gitops-bootstrap-runtime.sh"
       - "tests/dep-248.sh"
       - "tests/dep-251.sh"
       - "tests/dep-264.sh"
@@ -71,10 +79,12 @@ jobs:
           version: v3.18.6
       - name: Install helm-unittest
         run: helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.3
-      - name: Add official Argo chart repository
+      - name: Add official controller chart repositories
         run: |
           helm repo add argo https://argoproj.github.io/argo-helm
-          helm repo update argo
+          helm repo add eks https://aws.github.io/eks-charts
+          helm repo add external-secrets https://charts.external-secrets.io
+          helm repo update argo eks external-secrets
       - name: Build chart dependencies
         working-directory: helm/sports-store
         run: |
@@ -100,6 +110,7 @@ jobs:
         run: |
           bash tests/dep-238.sh
           bash tests/dep-239.sh
+          bash tests/gitops-bootstrap-runtime.sh
           bash tests/dep-248.sh
           bash tests/dep-251.sh
           bash tests/dep-264.sh

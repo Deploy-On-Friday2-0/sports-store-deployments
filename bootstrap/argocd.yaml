@@ -19,6 +19,10 @@ spec:
           install: true
           keep: true
 
+        configs:
+          params:
+            reposerver.parallelism.limit: "2"
+
         controller:
           resources:
             requests:
@@ -26,7 +30,7 @@ spec:
               memory: 256Mi
             limits:
               cpu: 500m
-              memory: 512Mi
+              memory: 1Gi
 
         server:
           service:
@@ -50,7 +54,7 @@ spec:
               memory: 256Mi
             limits:
               cpu: 500m
-              memory: 1024Mi
+              memory: 1Gi
 
         applicationSet:
           resources:
