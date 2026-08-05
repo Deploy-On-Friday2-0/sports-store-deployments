@@ -57,6 +57,8 @@ spec:
       kind: Job
     - group: networking.k8s.io
       kind: Ingress
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
     - group: networking.k8s.io
       kind: NetworkPolicy
     - group: policy
