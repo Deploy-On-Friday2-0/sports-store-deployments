@@ -23,13 +23,22 @@ mongodb:
     enabled: false
 
 redis:
+  image:
+    repository: bitnamilegacy/redis
+    tag: 7.2.5-debian-12-r6
   replica:
     persistence:
       storageClass: ebs-gp3-retain
       size: 8Gi
   metrics:
     enabled: true
+    image:
+      repository: bitnamilegacy/redis-exporter
+      tag: 1.58.0-debian-12-r7
   sentinel:
+    image:
+      repository: bitnamilegacy/redis-sentinel
+      tag: 7.2.5-debian-12-r5
     persistentVolumeClaimRetentionPolicy:
       enabled: true
       whenScaled: Retain
