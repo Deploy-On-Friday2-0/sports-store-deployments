@@ -14,7 +14,7 @@ GitOps source of truth for deploying the Sports Store platform.
 See `k8s/README.md` for the raw-manifest layout and apply order (Milestone 2),
 `helm/sports-store/README.md` for the parent Helm chart (Milestone 3), and
 `k8s/external-secrets/README.md` for the External Secrets Operator deployment.
-The pinned Argo CD and Argo Rollouts controller definitions are documented in
+The Terraform-owned Argo CD prerequisite and pinned Argo Rollouts definition are documented in
 [`bootstrap/README.md`](bootstrap/README.md).
 
 `apps/root-app.yaml` is the production App-of-Apps entry point. Its child
