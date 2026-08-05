@@ -6,7 +6,8 @@
 *.pem
 *.log
 rendered/
-helm/*/charts/
+helm/*/charts/*
+!helm/*/charts/*.tgz
 
 .DS_Store
 .idea/
