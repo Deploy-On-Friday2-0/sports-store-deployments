@@ -128,6 +128,14 @@ services:
       limits:
         cpu: 150m
         memory: 128Mi
+    # Off by default: local/kind clusters have no metrics-server, so the HPA
+    # would sit stuck with an "unknown" current metric. values-eks.yaml turns
+    # it on where the metrics-server addon is provisioned.
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 75
 
   gateway:
     enabled: true
@@ -144,6 +152,11 @@ services:
       limits:
         cpu: 150m
         memory: 128Mi
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 75
 
   auth:
     enabled: true
@@ -184,6 +197,11 @@ services:
       limits:
         cpu: 250m
         memory: 256Mi
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
 
   catalog:
     enabled: true
@@ -207,6 +225,11 @@ services:
       limits:
         cpu: 250m
         memory: 256Mi
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
 
   cart:
     enabled: true
@@ -242,6 +265,11 @@ services:
       limits:
         cpu: 250m
         memory: 256Mi
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
 
   order:
     enabled: true
@@ -275,6 +303,11 @@ services:
       limits:
         cpu: 250m
         memory: 256Mi
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
 
   payment:
     enabled: true
@@ -300,6 +333,11 @@ services:
       limits:
         cpu: 250m
         memory: 256Mi
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
 
 redis:
   enabled: true

@@ -14,7 +14,9 @@ metadata:
     {{- include "sports-store.selectorLabels" $name | nindent 4 }}
     {{- include "sports-store.labels" $ | nindent 4 }}
 spec:
+  {{- if not (and $svc.autoscaling $svc.autoscaling.enabled) }}
   replicas: {{ $svc.replicas }}
+  {{- end }}
   {{- if or (eq $name "catalog") (eq $name "order") }}
   revisionHistoryLimit: 3
   {{- end }}

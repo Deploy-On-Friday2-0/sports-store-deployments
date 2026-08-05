@@ -46,6 +46,34 @@ services:
     enabled: false
   frontend:
     enabled: false
+  # Backend services autoscale on CPU in production, where the metrics-server
+  # EKS addon is provisioned (sports-store-infrastructure eks.tf). minReplicas
+  # of 2 also gives each service baseline HA across nodes.
+  auth:
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 6
+  catalog:
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 6
+  cart:
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 6
+  order:
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 6
+  payment:
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 6
 
 # NOTE: the shared backend ServiceMonitor is intentionally NOT enabled here.
 # values-eks.yaml is shared by every DEP-248 production release, so enabling it
