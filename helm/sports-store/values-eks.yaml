@@ -23,7 +23,7 @@ mongodb:
     enabled: false
 
 redis:
-  master:
+  replica:
     persistence:
       storageClass: ebs-gp3-retain
       size: 8Gi
