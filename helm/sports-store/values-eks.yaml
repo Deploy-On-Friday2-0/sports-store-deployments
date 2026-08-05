@@ -23,6 +23,10 @@ mongodb:
     enabled: false
 
 redis:
+  master:
+    persistence:
+      storageClass: ebs-gp3-retain
+      size: 8Gi
   metrics:
     enabled: true
   sentinel:
