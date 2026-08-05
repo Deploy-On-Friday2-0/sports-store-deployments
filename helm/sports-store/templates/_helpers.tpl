@@ -47,7 +47,18 @@ the Deployment's pod template and its Service's selector so they match.
 app: {{ . }}
 {{- end -}}
 
-{{/* MongoDB ReplicaSet headless Service used as the driver discovery seed. */}}
+{{/*
+MongoDB ReplicaSet headless Service used as the driver discovery seed.
+Mirrors Bitnami's common.names.fullname rule for the mongodb subchart
+(no nameOverride/fullnameOverride set in values.yaml): when the release
+name already contains "mongodb" (e.g. release sports-store-mongodb) the
+subchart does NOT append a second "-mongodb", so the headless Service is
+<release>-headless; otherwise it is <release>-mongodb-headless.
+*/}}
 {{- define "sports-store.mongoHost" -}}
-{{- printf "%s-mongodb-headless" .Release.Name -}}
+{{- if contains "mongodb" .Release.Name -}}
+{{- printf "%s-headless" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-mongodb-headless" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
 {{- end -}}
