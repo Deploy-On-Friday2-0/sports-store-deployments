@@ -1,0 +1,66 @@
+suite: Production ALB ingress contract
+release:
+  name: sports-store-ingress
+  namespace: sports-store
+values:
+  - ../values-eks.yaml
+templates:
+  - templates/ingress.yaml
+tests:
+  - it: renders the shared ALB ingress with the /health health-check path
+    set:
+      fullnameOverride: sports-store-gateway
+      enabledServices: []
+      ingressServices: [auth, catalog, cart, order, payment]
+    asserts:
+      - isKind:
+          of: Ingress
+      - equal:
+          path: metadata.name
+          value: sports-store-gateway
+      - equal:
+          path: spec.ingressClassName
+          value: alb
+      - equal:
+          path: metadata.annotations["alb.ingress.kubernetes.io/scheme"]
+          value: internet-facing
+      - equal:
+          path: metadata.annotations["alb.ingress.kubernetes.io/target-type"]
+          value: ip
+      - equal:
+          path: metadata.annotations["alb.ingress.kubernetes.io/healthcheck-path"]
+          value: /health
+      - matchRegex:
+          path: metadata.annotations["alb.ingress.kubernetes.io/actions.catalog"]
+          pattern: 'catalog'
+
+  - it: routes one /api/* path per backend service
+    set:
+      fullnameOverride: sports-store-gateway
+      enabledServices: []
+      ingressServices: [auth, catalog, cart, order, payment]
+    asserts:
+      - lengthEqual:
+          path: spec.rules[0].http.paths
+          count: 5
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /api/auth
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.number
+          value: 8001
+      - equal:
+          path: spec.rules[0].http.paths[1].path
+          value: /api/cart
+      - equal:
+          path: spec.rules[0].http.paths[2].path
+          value: /api/products
+      - equal:
+          path: spec.rules[0].http.paths[2].backend.service.port.name
+          value: use-annotation
+      - equal:
+          path: spec.rules[0].http.paths[3].path
+          value: /api/orders
+      - equal:
+          path: spec.rules[0].http.paths[4].path
+          value: /api/payments

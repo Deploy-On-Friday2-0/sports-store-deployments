@@ -54,6 +54,9 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/load-balancer-name: "alb-sports-store"
+    # Every backend exposes its health endpoint at /health; the AWS Load
+    # Balancer Controller default of / returns 404 and marks targets unhealthy.
+    alb.ingress.kubernetes.io/healthcheck-path: /health
     # Optional ACM certificate override - if omitted, ALB defaults to HTTP on port 80
     # alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:123456789012:certificate/abc-123"
 
