@@ -14,18 +14,30 @@ assert_contains() {
   grep -Fq -- "$value" "$file" || fail "$description"
 }
 
+assert_not_contains() {
+  local file="$1"
+  local value="$2"
+  local description="$3"
+  grep -Fq -- "$value" "$file" && fail "$description"
+  return 0
+}
+
 for step in \
   'bootstrap/00-namespaces.yaml' \
   'storageclass ebs-gp3-retain' \
-  'helm upgrade --install argocd' \
+  'helm status argocd' \
   'projects/sports-store-project.yaml' \
-  'bootstrap/argocd.yaml' \
   'apps/root-app.yaml' \
   'apps/platform-controllers.yaml' \
   'apps/monitoring/prometheus-stack.yaml' \
   'apps/kubecost/kubecost.yaml'; do
   assert_contains scripts/bootstrap-gitops.ps1 "$step" "bootstrap script is missing $step"
 done
+
+assert_not_contains scripts/bootstrap-gitops.ps1 'helm upgrade --install argocd' \
+  'deployments bootstrap must not install the Terraform-owned Argo CD release'
+assert_not_contains scripts/bootstrap-gitops.ps1 'helm uninstall argocd' \
+  'deployments bootstrap must not uninstall the Terraform-owned Argo CD release'
 
 assert_contains apps/platform-controllers.yaml 'targetRevision: 3.5.0' \
   'AWS Load Balancer Controller chart version is not pinned'

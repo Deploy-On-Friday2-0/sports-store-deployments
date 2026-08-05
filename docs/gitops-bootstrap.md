@@ -2,7 +2,8 @@
 
 ## Architecture
 
-The bootstrap has three layers, applied in this order:
+Terraform first installs Argo CD. The deployments bootstrap then has three
+layers, applied in this order:
 
 1. `bootstrap/00-namespaces.yaml` declares `argocd`, `argo-rollouts`,
    `external-secrets`, `apps`, `monitoring`, and `logging`. The pre-existing
@@ -16,11 +17,14 @@ The bootstrap has three layers, applied in this order:
 
 The root manages `sports-store-production` and `argo-rollouts`. Kubecost remains
 independently managed under `apps/kubecost/` because it belongs to the separate
-observability scope. Argo CD remains a bootstrap Application rather than a root
-child so a bad root sync cannot remove the controller that performs recovery.
+observability scope. Argo CD is intentionally absent from the Application tree:
+Terraform exclusively owns its Helm release so GitOps cannot remove the
+controller that performs recovery and the two systems cannot fight over it.
 
-Run `pwsh scripts/bootstrap-gitops.ps1` from an approved operator network when
-bootstrapping a new or rebuilt cluster. The EKS API must only be opened to that
+After Terraform has installed Argo CD, run `pwsh scripts/bootstrap-gitops.ps1`
+from an approved operator network when bootstrapping a new or rebuilt cluster.
+The script fails if the Terraform-owned `argocd` release is absent or unhealthy.
+The EKS API must only be opened to that
 operator's `/32` for the duration of the bootstrap and closed again after Argo
 CD has reconciled the in-cluster controllers and workloads.
 
@@ -34,10 +38,9 @@ second controller. The Application now uses `sports-store-project` and enables
 prune and self-heal. CRDs retain `keepCRDs: true` and are not intended to be
 deleted during prune or chart removal.
 
-The Argo CD bootstrap Application also uses `sports-store-project`, but does not
-enable automated self-sync. This deliberate recovery safeguard avoids a
-circular dependency in which an erroneous self-management change removes or
-locks out the controller needed to repair itself.
+Argo CD itself is not an Application in this repository. Terraform owns its
+chart version, values, installation, upgrade, and removal. This avoids circular
+self-management and establishes one auditable owner for the controller.
 
 ## Namespace and project boundaries
 
