@@ -140,7 +140,7 @@ spec:
                   expressions = {
                     level = "level",
                     service = "service",
-                    trace_id = "trace_id"
+                    trace_id = "trace_id",
                   }
                 }
 
@@ -148,7 +148,7 @@ spec:
                   values = {
                     level = "",
                     service = "",
-                    trace_id = ""
+                    trace_id = "",
                   }
                 }
               }
