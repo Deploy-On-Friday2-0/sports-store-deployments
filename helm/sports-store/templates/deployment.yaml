@@ -33,6 +33,7 @@ spec:
         alb:
           ingress: {{ include "sports-store.fullname" $ }}
           rootService: {{ $name }}
+          servicePort: {{ $svc.port }}
         {{- else if eq $.Values.ingress.className "nginx" }}
         nginx:
           stableService: {{ $name }}

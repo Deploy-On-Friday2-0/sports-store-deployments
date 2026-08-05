@@ -68,3 +68,24 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-secrets-resources
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git
+    targetRevision: main
+    path: k8s/external-secrets
+    directory:
+      include: cluster-secret-store.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-secrets
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
