@@ -382,6 +382,42 @@ scope:
   needed) an OIDC `sub` in `infrastructure/iam.tf`; add the service to the Helm
   `values`, an image-tag file, and the gateway routes.
 
+**Recreate the observability secret (if deleted)**
+- `sports-store/production/observability` is provisioned **out-of-band** — no
+  Terraform resource backs it (§13), so nothing recreates it automatically if
+  it's ever deleted from AWS Secrets Manager or a cluster/account rebuild
+  starts from scratch. Symptom: `grafana-admin`/`alertmanager-slack`
+  `ExternalSecret`s in `monitoring` show `STATUS=SecretDeleted` (both have
+  `deletionPolicy: Delete`, so ESO removes the K8s Secret too), Grafana's pod
+  sits in `CreateContainerConfigError`, and Alertmanager's init container
+  hangs in `PodInitializing`.
+- Recreate it with the three properties `secrets/observability/external-secrets.yaml`
+  expects:
+  ```sh
+  aws secretsmanager create-secret \
+    --name sports-store/production/observability \
+    --kms-key-id alias/aws/secretsmanager \
+    --secret-string '{"GRAFANA_ADMIN_USER":"admin","GRAFANA_ADMIN_PASSWORD":"<generate a new strong password>","SLACK_WEBHOOK_URL":"<Slack incoming webhook URL>"}' \
+    --region us-east-1
+  ```
+  - `GRAFANA_ADMIN_USER`/`GRAFANA_ADMIN_PASSWORD` are just the Grafana login —
+    generate a fresh random password, no need to match a prior value.
+  - `SLACK_WEBHOOK_URL` is a real external credential; don't invent one. The
+    same webhook already used by `k8sgpt-secrets` (property `SLACK_WEBHOOK_URL`
+    on `sports-store/production/config`) can be reused, or ask whoever owns
+    the `#k8s-ai-diagnostics`/alerts Slack workspace for a fresh one.
+- Force an immediate ESO resync rather than waiting for the 1h
+  `refreshInterval`:
+  ```sh
+  kubectl annotate externalsecret grafana-admin -n monitoring force-sync="$(date +%s)" --overwrite
+  kubectl annotate externalsecret alertmanager-slack -n monitoring force-sync="$(date +%s)" --overwrite
+  ```
+- Confirm `kubectl get externalsecret -n monitoring` shows both
+  `SecretSynced`/`Ready=True`, then `kubectl get pods -n monitoring` shows
+  Grafana `3/3 Running` and the Alertmanager pod `2/2 Running`. No pod restart
+  is needed — kubelet retries `CreateContainerConfigError`/`PodInitializing`
+  pods automatically once the referenced Secret exists.
+
 ---
 
 ## 15. Glossary
