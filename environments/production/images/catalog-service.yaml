@@ -1,6 +1,6 @@
 # Source of truth for the production catalog-service image tag.
 image:
-  tag: &catalogServiceTag 1.0.0-7ac2553
+  tag: &catalogServiceTag 1.0.0-d2f51a0
 services:
   catalog:
     tag: *catalogServiceTag

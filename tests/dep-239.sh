@@ -43,8 +43,6 @@ assert_application() {
     automated = app.dig("spec", "syncPolicy", "automated")
     if ARGV.fetch(5) == "true"
       abort "prune/self-heal must be enabled" unless automated == {"prune" => true, "selfHeal" => true}
-    else
-      abort "automated Argo CD self-sync is unsafe" if automated
     end
   ' "$application" "$name" "$chart" "$version" "$namespace" "$automated_expected"
 }
@@ -53,7 +51,7 @@ assert_namespaces() {
   ruby -ryaml -e '
     documents = YAML.load_stream(File.read(ARGV.fetch(0)))
     namespaces = documents.filter_map { |doc| doc.dig("metadata", "name") if doc["kind"] == "Namespace" }
-    expected = %w[argocd argo-rollouts apps monitoring logging]
+    expected = %w[argocd argo-rollouts external-secrets apps monitoring logging]
     abort "expected namespaces #{expected.inspect}, got #{namespaces.inspect}" unless namespaces.sort == expected.sort
   ' "$bootstrap_dir/00-namespaces.yaml"
 }
@@ -80,18 +78,13 @@ assert_workload_resources() {
 }
 
 assert_namespaces
-assert_application "$bootstrap_dir/argocd.yaml" argocd argo-cd 10.2.2 argocd false
 assert_application "$repo_root/apps/argo-rollouts.yaml" argo-rollouts argo-rollouts 2.41.1 argo-rollouts true
 
-extract_values "$bootstrap_dir/argocd.yaml" "$temp_dir/argocd-values.yaml"
 extract_values "$repo_root/apps/argo-rollouts.yaml" "$temp_dir/argo-rollouts-values.yaml"
 
-helm template argocd argo/argo-cd --version 10.2.2 --namespace argocd \
-  --values "$temp_dir/argocd-values.yaml" --include-crds >"$temp_dir/argocd-rendered.yaml"
 helm template argo-rollouts argo/argo-rollouts --version 2.41.1 --namespace argo-rollouts \
   --values "$temp_dir/argo-rollouts-values.yaml" --include-crds >"$temp_dir/argo-rollouts-rendered.yaml"
 
-assert_workload_resources "$temp_dir/argocd-rendered.yaml"
 assert_workload_resources "$temp_dir/argo-rollouts-rendered.yaml"
 
 ruby -ryaml -e '

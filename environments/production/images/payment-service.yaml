@@ -1,6 +1,6 @@
 # Source of truth for the production payment-service image tag.
 image:
-  tag: &paymentServiceTag 1.0.0-772a917
+  tag: &paymentServiceTag 1.0.0-f1c94af
 services:
   payment:
     tag: *paymentServiceTag

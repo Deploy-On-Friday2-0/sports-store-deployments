@@ -1,6 +1,6 @@
 # Source of truth for the production order-service image tag.
 image:
-  tag: &orderServiceTag 1.0.0-99847eb
+  tag: &orderServiceTag 1.0.0-f83514e
 services:
   order:
     tag: *orderServiceTag
