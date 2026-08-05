@@ -13,7 +13,7 @@ ruby -ryaml -e '
 
   apps = YAML.load_stream(File.read(ARGV[1])).compact
   names = apps.map { |app| app.dig("metadata", "name") }
-  expected = %w[production-mongodb production-redis-sentinel production-auth-service production-cart-service production-catalog-service production-order-service production-payment-service production-gateway]
+  expected = %w[production-mongodb production-redis-sentinel production-auth-service production-cart-service production-catalog-service production-order-service production-payment-service production-ingress]
   abort "unexpected Applications: #{names.inspect}" unless names.sort == expected.sort
   workload_apps = apps
   workload_apps.each do |app|
@@ -33,7 +33,7 @@ ruby -ryaml -e '
     "production-catalog-service" => "sports-store-catalog",
     "production-order-service" => "sports-store-order",
     "production-payment-service" => "sports-store-payment",
-    "production-gateway" => "sports-store-gateway"
+    "production-ingress" => "sports-store-ingress"
   }
   actual_releases = workload_apps.to_h { |app| [app.dig("metadata", "name"), app.dig("spec", "source", "helm", "releaseName")] }
   abort "release-name mapping drift: #{actual_releases.inspect}" unless actual_releases == expected_releases

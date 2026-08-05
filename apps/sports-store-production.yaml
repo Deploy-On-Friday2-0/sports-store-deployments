@@ -185,11 +185,15 @@ spec:
       - ApplyOutOfSyncOnly=true
 ---
 # The legacy nginx gateway workload was removed (frontend moved
-# out-of-cluster to CloudFront). This Application now owns only the
-# shared ALB Ingress that routes /api/* to the backend services.
+# out-of-cluster to CloudFront). This Application owns only the shared
+# ALB Ingress that routes /api/* to the backend services. The release
+# is named sports-store-ingress; fullnameOverride pins the Ingress to
+# its historical name (sports-store-gateway) so the existing ALB is
+# adopted instead of recreated (CloudFront's /api/* origin targets that
+# ALB's DNS name).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
-metadata: {name: production-gateway, namespace: argocd, annotations: {argocd.argoproj.io/sync-wave: "1"}}
+metadata: {name: production-ingress, namespace: argocd, annotations: {argocd.argoproj.io/sync-wave: "1"}}
 spec:
   project: sports-store-project
   source:
@@ -197,9 +201,10 @@ spec:
     targetRevision: main
     path: helm/sports-store
     helm:
-      releaseName: sports-store-gateway
+      releaseName: sports-store-ingress
       valueFiles: [values-eks.yaml]
       values: |
+        fullnameOverride: sports-store-gateway
         enabledServices: []
         ingressServices: [auth, catalog, cart, order, payment]
         platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: false}

@@ -102,15 +102,12 @@ Each service is a small FastAPI app (FastAPI `0.140`, Uvicorn, async MongoDB via
 | `/api/orders` | `order:8004` |
 | `/api/payments` | `payment:8005` |
 
-> **EKS topology note.** `helm/sports-store/values-eks.yaml` disables the gateway and
-> frontend **by default**, but the `production-gateway` Argo CD Application explicitly
-> re-enables and deploys the gateway workload (`enabledServices: [gateway]`,
-> `services.gateway.enabled: true`). The gateway pod therefore still runs on EKS. The
-> real distinction from Compose is the **request path**: the ALB `Ingress` routes
-> directly to the backend Services (`ingressServices: [auth, catalog, cart, order,
-> payment]`) and does **not** send traffic through the gateway, and the frontend is
-> served from S3 + CloudFront. This is a deliberate cloud-native deviation from the
-> Compose topology — see the repo README/COMPLIANCE for the rationale.
+> **EKS topology note.** The frontend is served from S3 + CloudFront, and the ALB
+> `Ingress` routes `/api/*` directly to the backend Services (`ingressServices:
+> [auth, catalog, cart, order, payment]`). The legacy gateway nginx workload was
+> removed when the frontend left the cluster; the `production-ingress` Argo CD
+> Application owns only the shared Ingress. CloudFront's `/api/*` origin targets
+> the ALB that this Ingress provisions.
 
 ---
 
