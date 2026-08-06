@@ -30,7 +30,7 @@ spec:
   version: v0.4.36
   ai:
     enabled: true
-    model: gemini-2.5-flash
+    model: gemini-3.5-flash
     backend: google
     secret:
       name: k8sgpt-secrets
@@ -60,7 +60,7 @@ spec:
   version: v0.4.36
   ai:
     enabled: true
-    model: gemini-2.5-flash
+    model: gemini-3.5-flash
     backend: google
     secret:
       name: k8sgpt-secrets
@@ -90,7 +90,7 @@ spec:
   version: v0.4.36
   ai:
     enabled: true
-    model: gemini-2.5-flash
+    model: gemini-3.5-flash
     backend: google
     secret:
       name: k8sgpt-secrets
@@ -120,7 +120,7 @@ spec:
   version: v0.4.36
   ai:
     enabled: true
-    model: gemini-2.5-flash
+    model: gemini-3.5-flash
     backend: google
     secret:
       name: k8sgpt-secrets
@@ -150,7 +150,7 @@ spec:
   version: v0.4.36
   ai:
     enabled: true
-    model: gemini-2.5-flash
+    model: gemini-3.5-flash
     backend: google
     secret:
       name: k8sgpt-secrets
