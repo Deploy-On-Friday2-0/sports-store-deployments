@@ -29,7 +29,7 @@ metadata:
 spec:
   version: v0.4.36
   ai:
-    enabled: true
+    enabled: false
     model: gemini-3.5-flash
     backend: google
     secret:
@@ -59,7 +59,7 @@ metadata:
 spec:
   version: v0.4.36
   ai:
-    enabled: true
+    enabled: false
     model: gemini-3.5-flash
     backend: google
     secret:
@@ -89,7 +89,7 @@ metadata:
 spec:
   version: v0.4.36
   ai:
-    enabled: true
+    enabled: false
     model: gemini-3.5-flash
     backend: google
     secret:
@@ -119,7 +119,7 @@ metadata:
 spec:
   version: v0.4.36
   ai:
-    enabled: true
+    enabled: false
     model: gemini-3.5-flash
     backend: google
     secret:
