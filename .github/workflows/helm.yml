@@ -31,6 +31,8 @@ on:
       - "tests/dep-360.py"
       - "tests/dep-361.sh"
       - "tests/dep-361.py"
+      - "tests/dep-336.sh"
+      - "tests/dep-336.py"
   push:
     paths:
       - ".github/workflows/helm.yml"
@@ -61,6 +63,8 @@ on:
       - "tests/dep-360.py"
       - "tests/dep-361.sh"
       - "tests/dep-361.py"
+      - "tests/dep-336.sh"
+      - "tests/dep-336.py"
 
 permissions:
   contents: read
@@ -129,3 +133,4 @@ jobs:
           bash tests/dep-296.sh
           bash tests/dep-360.sh
           bash tests/dep-361.sh
+          bash tests/dep-336.sh
