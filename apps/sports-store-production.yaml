@@ -211,6 +211,11 @@ spec:
         mongodb: {enabled: false}
         redis: {enabled: false}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
+  ignoreDifferences:
+    - group: networking.k8s.io
+      kind: Ingress
+      managedFieldsManagers:
+        - argoproj.io/rollouts
   syncPolicy:
     automated: {prune: true, selfHeal: true}
     syncOptions:
