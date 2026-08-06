@@ -413,6 +413,11 @@ scope:
     `deploy-on-friday`) before applying. Then re-run `terraform apply`; it
     overwrites the secret's contents with the Terraform-generated password
     plus the current `slack_webhook_url`.
+  - **Rotate the Grafana password:** `secret_string_wo` is write-only, so
+    unrelated applies never change it. To rotate, bump the
+    `production_observability_version` Terraform Cloud variable (org
+    `deploy-on-friday`, `sports-store-infrastructure` workspace) and re-run
+    `terraform apply`.
 - **Emergency fallback (no Terraform Cloud access mid-incident):** recreate it
   by hand, then reconcile Terraform afterward.
   ```sh
