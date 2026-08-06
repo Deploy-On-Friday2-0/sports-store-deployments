@@ -401,14 +401,18 @@ scope:
   secret with a fresh Grafana password and the existing webhook — no manual
   AWS CLI needed.
   - **One-time gotcha:** if the secret already exists in AWS Secrets Manager
-    but isn't yet in Terraform state — e.g. right after adopting PR #45, or
+    but isn't yet in Terraform state — e.g. right after adopting the
+    observability-secret PR (sports-store-infrastructure #47, DEP-331), or
     after the emergency fallback below was used mid-incident — `terraform
     apply` fails on a name collision. Import it first:
     ```sh
-    terraform import aws_secretsmanager_secret.production_observability sports-store/production/observability
+    terraform import aws_secretsmanager_secret.production_observability arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:sports-store/production/observability-<SUFFIX>
     ```
-    Then re-run `terraform apply`; it overwrites the secret's contents with
-    the Terraform-generated password plus the current `slack_webhook_url`.
+    Import by **ARN** (not just the secret name), run in the
+    `sports-store-infrastructure` Terraform Cloud workspace (org
+    `deploy-on-friday`) before applying. Then re-run `terraform apply`; it
+    overwrites the secret's contents with the Terraform-generated password
+    plus the current `slack_webhook_url`.
 - **Emergency fallback (no Terraform Cloud access mid-incident):** recreate it
   by hand, then reconcile Terraform afterward.
   ```sh
