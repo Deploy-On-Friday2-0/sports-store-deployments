@@ -1,0 +1,60 @@
+suite: Production recovery contract
+release:
+  name: sports-store-gateway
+  namespace: sports-store
+values:
+  - ../values-eks.yaml
+templates:
+  - templates/deployment.yaml
+tests:
+  - it: pulls auth from the production ECR repository
+    template: templates/deployment.yaml
+    documentSelector: {path: metadata.name, value: auth}
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: '^386689380284\.dkr\.ecr\.us-east-1\.amazonaws\.com/auth-service:'
+
+  - it: pulls cart from the production ECR repository
+    template: templates/deployment.yaml
+    documentSelector: {path: metadata.name, value: cart}
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: '^386689380284\.dkr\.ecr\.us-east-1\.amazonaws\.com/cart-service:'
+
+  - it: pulls payment from the production ECR repository
+    template: templates/deployment.yaml
+    documentSelector: {path: metadata.name, value: payment}
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: '^386689380284\.dkr\.ecr\.us-east-1\.amazonaws\.com/payment-service:'
+
+  - it: renders a valid ALB catalog Rollout
+    template: templates/deployment.yaml
+    documentSelector: {path: metadata.name, value: catalog}
+    asserts:
+      - equal: {path: spec.strategy.canary.trafficRouting.alb.servicePort, value: 8002}
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: '^386689380284\.dkr\.ecr\.us-east-1\.amazonaws\.com/catalog-service:'
+
+  - it: renders a valid ALB order Rollout
+    template: templates/deployment.yaml
+    documentSelector: {path: metadata.name, value: order}
+    asserts:
+      - equal: {path: spec.strategy.canary.trafficRouting.alb.servicePort, value: 8004}
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: '^386689380284\.dkr\.ecr\.us-east-1\.amazonaws\.com/order-service:'
+
+  - it: pulls gateway from the production ECR repository when enabled
+    template: templates/deployment.yaml
+    set:
+      services.gateway.enabled: true
+    documentSelector: {path: metadata.name, value: gateway}
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: '^386689380284\.dkr\.ecr\.us-east-1\.amazonaws\.com/gateway:'

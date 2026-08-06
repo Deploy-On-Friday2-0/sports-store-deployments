@@ -9,6 +9,7 @@ on:
       - "apps/argo-rollouts.yaml"
       - "apps/platform-controllers.yaml"
       - "apps/kubecost/**"
+      - "apps/k8sgpt/**"
       - "apps/infrastructure.yaml"
       - "bootstrap/**"
       - "scripts/bootstrap-gitops.ps1"
@@ -25,6 +26,11 @@ on:
       - "load-testing/k6/**"
       - "tests/dep-296.sh"
       - "tests/dep-296.py"
+      - "apps/k8sgpt/**"
+      - "tests/dep-360.sh"
+      - "tests/dep-360.py"
+      - "tests/dep-361.sh"
+      - "tests/dep-361.py"
   push:
     paths:
       - ".github/workflows/helm.yml"
@@ -33,6 +39,7 @@ on:
       - "apps/argo-rollouts.yaml"
       - "apps/platform-controllers.yaml"
       - "apps/kubecost/**"
+      - "apps/k8sgpt/**"
       - "apps/infrastructure.yaml"
       - "bootstrap/**"
       - "scripts/bootstrap-gitops.ps1"
@@ -49,6 +56,11 @@ on:
       - "load-testing/k6/**"
       - "tests/dep-296.sh"
       - "tests/dep-296.py"
+      - "apps/k8sgpt/**"
+      - "tests/dep-360.sh"
+      - "tests/dep-360.py"
+      - "tests/dep-361.sh"
+      - "tests/dep-361.py"
 
 permissions:
   contents: read
@@ -115,3 +127,5 @@ jobs:
           bash tests/dep-251.sh
           bash tests/dep-264.sh
           bash tests/dep-296.sh
+          bash tests/dep-360.sh
+          bash tests/dep-361.sh

@@ -47,6 +47,10 @@ assert_contains apps/platform-controllers.yaml 'targetRevision: 2.8.0' \
   'External Secrets chart version is not pinned'
 assert_contains apps/platform-controllers.yaml 'name: external-secrets-sa' \
   'External Secrets ServiceAccount does not match Pod Identity'
+assert_contains apps/platform-controllers.yaml 'name: external-secrets-resources' \
+  'External Secrets resources Application is missing'
+assert_contains apps/platform-controllers.yaml 'include: cluster-secret-store.yaml' \
+  'External Secrets resources Application does not sync the ClusterSecretStore'
 assert_contains bootstrap/00-namespaces.yaml 'name: external-secrets' \
   'External Secrets namespace is not bootstrapped'
 

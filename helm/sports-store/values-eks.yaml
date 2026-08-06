@@ -18,12 +18,27 @@ mongodb:
       - ReadWriteOnce
     size: 8Gi
   metrics:
-    enabled: true
+    # The chart-pinned exporter tag no longer exists upstream. Keep MongoDB
+    # available while metrics are repaired separately.
+    enabled: false
 
 redis:
+  image:
+    repository: bitnamilegacy/redis
+    tag: 7.2.5-debian-12-r6
+  replica:
+    persistence:
+      storageClass: ebs-gp3-retain
+      size: 8Gi
   metrics:
     enabled: true
+    image:
+      repository: bitnamilegacy/redis-exporter
+      tag: 1.58.0-debian-12-r7
   sentinel:
+    image:
+      repository: bitnamilegacy/redis-sentinel
+      tag: 7.2.5-debian-12-r5
     persistentVolumeClaimRetentionPolicy:
       enabled: true
       whenScaled: Retain
@@ -38,38 +53,48 @@ ingress:
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/load-balancer-name: "alb-sports-store"
+    # Every backend exposes its health endpoint at /health; the AWS Load
+    # Balancer Controller default of / returns 404 and marks targets unhealthy.
+    alb.ingress.kubernetes.io/healthcheck-path: /health
     # Optional ACM certificate override - if omitted, ALB defaults to HTTP on port 80
     # alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:123456789012:certificate/abc-123"
 
 services:
   gateway:
     enabled: false
+    image: 386689380284.dkr.ecr.us-east-1.amazonaws.com/gateway
   frontend:
     enabled: false
   # Backend services autoscale on CPU in production, where the metrics-server
   # EKS addon is provisioned (sports-store-infrastructure eks.tf). minReplicas
   # of 2 also gives each service baseline HA across nodes.
   auth:
+    image: 386689380284.dkr.ecr.us-east-1.amazonaws.com/auth-service
     autoscaling:
       enabled: true
       minReplicas: 2
       maxReplicas: 6
   catalog:
+    image: 386689380284.dkr.ecr.us-east-1.amazonaws.com/catalog-service
     autoscaling:
       enabled: true
       minReplicas: 2
       maxReplicas: 6
   cart:
+    image: 386689380284.dkr.ecr.us-east-1.amazonaws.com/cart-service
     autoscaling:
       enabled: true
       minReplicas: 2
       maxReplicas: 6
   order:
+    image: 386689380284.dkr.ecr.us-east-1.amazonaws.com/order-service
     autoscaling:
       enabled: true
       minReplicas: 2
       maxReplicas: 6
   payment:
+    image: 386689380284.dkr.ecr.us-east-1.amazonaws.com/payment-service
     autoscaling:
       enabled: true
       minReplicas: 2
