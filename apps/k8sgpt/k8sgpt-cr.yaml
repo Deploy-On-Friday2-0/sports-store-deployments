@@ -38,7 +38,7 @@ spec:
   noCache: false
   targetNamespace: default
   analysis:
-    interval: 5m
+    interval: 2m
   filters:
     - Pod
     - Ingress
@@ -72,7 +72,7 @@ spec:
   noCache: false
   targetNamespace: apps
   analysis:
-    interval: 5m
+    interval: 2m
   filters:
     - Pod
     - Ingress
@@ -106,7 +106,7 @@ spec:
   noCache: false
   targetNamespace: monitoring
   analysis:
-    interval: 5m
+    interval: 2m
   filters:
     - Pod
     - Ingress
@@ -140,7 +140,7 @@ spec:
   noCache: false
   targetNamespace: logging
   analysis:
-    interval: 5m
+    interval: 2m
   filters:
     - Pod
     - Ingress
@@ -174,7 +174,7 @@ spec:
   noCache: false
   targetNamespace: sports-store
   analysis:
-    interval: 5m
+    interval: 2m
   filters:
     - Pod
     - Ingress

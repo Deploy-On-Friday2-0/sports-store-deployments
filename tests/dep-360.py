@@ -51,8 +51,8 @@ def main() -> None:
                 fail(f"{name} missing {expected} filter")
 
         interval_match = re.search(r"interval:\s*(\S+)", doc)
-        if not interval_match or interval_match.group(1) != "5m":
-            fail(f"{name} analysis interval must be 5m, found {interval_match.group(1) if interval_match else 'none'}")
+        if not interval_match or interval_match.group(1) != "2m":
+            fail(f"{name} analysis interval must be 2m, found {interval_match.group(1) if interval_match else 'none'}")
 
     if "hooks.slack.com" in text:
         fail("real Slack webhook URL committed to the repository")
