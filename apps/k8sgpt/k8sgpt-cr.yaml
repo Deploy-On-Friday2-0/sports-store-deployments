@@ -46,10 +46,6 @@ spec:
     - Deployment
   sink:
     type: slack
-    # DEP-360: dedup marker for the operator - the real webhook URL is provided by the
-    # secret below. The operator writes this value into Result.status.webhook to dedupe
-    # notifications (it never posts to it while the secret is set), so it must be
-    # non-empty and constant or the operator re-emits every reconcile.
     webhook: placeholder-dep-360
     secret:
       name: k8sgpt-secrets
@@ -80,10 +76,6 @@ spec:
     - Deployment
   sink:
     type: slack
-    # DEP-360: dedup marker for the operator - the real webhook URL is provided by the
-    # secret below. The operator writes this value into Result.status.webhook to dedupe
-    # notifications (it never posts to it while the secret is set), so it must be
-    # non-empty and constant or the operator re-emits every reconcile.
     webhook: placeholder-dep-360
     secret:
       name: k8sgpt-secrets
@@ -114,10 +106,6 @@ spec:
     - Deployment
   sink:
     type: slack
-    # DEP-360: dedup marker for the operator - the real webhook URL is provided by the
-    # secret below. The operator writes this value into Result.status.webhook to dedupe
-    # notifications (it never posts to it while the secret is set), so it must be
-    # non-empty and constant or the operator re-emits every reconcile.
     webhook: placeholder-dep-360
     secret:
       name: k8sgpt-secrets
@@ -148,10 +136,6 @@ spec:
     - Deployment
   sink:
     type: slack
-    # DEP-360: dedup marker for the operator - the real webhook URL is provided by the
-    # secret below. The operator writes this value into Result.status.webhook to dedupe
-    # notifications (it never posts to it while the secret is set), so it must be
-    # non-empty and constant or the operator re-emits every reconcile.
     webhook: placeholder-dep-360
     secret:
       name: k8sgpt-secrets
@@ -182,10 +166,6 @@ spec:
     - Deployment
   sink:
     type: slack
-    # DEP-360: dedup marker for the operator - the real webhook URL is provided by the
-    # secret below. The operator writes this value into Result.status.webhook to dedupe
-    # notifications (it never posts to it while the secret is set), so it must be
-    # non-empty and constant or the operator re-emits every reconcile.
     webhook: placeholder-dep-360
     secret:
       name: k8sgpt-secrets
