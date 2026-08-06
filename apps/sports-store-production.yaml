@@ -211,6 +211,13 @@ spec:
         mongodb: {enabled: false}
         redis: {enabled: false}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
+  ignoreDifferences:
+    - group: networking.k8s.io
+      kind: Ingress
+      jqPathExpressions:
+        - .metadata.annotations."alb.ingress.kubernetes.io/actions.catalog"
+        - .metadata.annotations."alb.ingress.kubernetes.io/actions.order"
+        - .metadata.annotations."rollouts.argoproj.io/managed-alb-annotations"
   syncPolicy:
     automated: {prune: true, selfHeal: true}
     syncOptions:

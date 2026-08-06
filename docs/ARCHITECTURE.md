@@ -382,6 +382,69 @@ scope:
   needed) an OIDC `sub` in `infrastructure/iam.tf`; add the service to the Helm
   `values`, an image-tag file, and the gateway routes.
 
+**Recreate the observability secret (if deleted)**
+- As of `sports-store-infrastructure` PR #45, `sports-store/production/observability`
+  is mostly **Terraform-managed** (`aws_secretsmanager_secret.production_observability`
+  + `_version` in `secrets.tf`): Terraform sets `GRAFANA_ADMIN_USER = "admin"` and
+  generates `GRAFANA_ADMIN_PASSWORD` itself (`random_password`, no human input
+  needed). Only `SLACK_WEBHOOK_URL` stays human-supplied, via the same
+  `slack_webhook_url` Terraform Cloud variable already used for
+  `sports-store/production/config`'s K8sGPT sink — Terraform can't invent a
+  real external credential. Symptom if it's ever deleted:
+  `grafana-admin`/`alertmanager-slack` `ExternalSecret`s in `monitoring` show
+  `STATUS=SecretDeleted` (both have `deletionPolicy: Delete`, so ESO removes
+  the K8s Secret too), Grafana's pod sits in `CreateContainerConfigError`, and
+  Alertmanager's init container hangs in `PodInitializing`.
+- **Preferred recovery: re-run Terraform.** Queue a `terraform apply` on the
+  `sports-store-infrastructure` Terraform Cloud workspace (`slack_webhook_url`
+  is already set there, shared with the config secret). This recreates the
+  secret with a fresh Grafana password and the existing webhook — no manual
+  AWS CLI needed.
+  - **One-time gotcha:** if the secret already exists in AWS Secrets Manager
+    but isn't yet in Terraform state — e.g. right after adopting the
+    observability-secret PR (sports-store-infrastructure #47, DEP-331), or
+    after the emergency fallback below was used mid-incident — `terraform
+    apply` fails on a name collision. Import it first:
+    ```sh
+    terraform import aws_secretsmanager_secret.production_observability arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:sports-store/production/observability-<SUFFIX>
+    ```
+    Import by **ARN** (not just the secret name), run in the
+    `sports-store-infrastructure` Terraform Cloud workspace (org
+    `deploy-on-friday`) before applying. Then re-run `terraform apply`; it
+    overwrites the secret's contents with the Terraform-generated password
+    plus the current `slack_webhook_url`.
+  - **Rotate the Grafana password:** `secret_string_wo` is write-only, so
+    unrelated applies never change it. To rotate, bump the
+    `production_observability_version` Terraform Cloud variable (org
+    `deploy-on-friday`, `sports-store-infrastructure` workspace) and re-run
+    `terraform apply`.
+- **Emergency fallback (no Terraform Cloud access mid-incident):** recreate it
+  by hand, then reconcile Terraform afterward.
+  ```sh
+  aws secretsmanager create-secret \
+    --name sports-store/production/observability \
+    --kms-key-id alias/aws/secretsmanager \
+    --secret-string '{"GRAFANA_ADMIN_USER":"admin","GRAFANA_ADMIN_PASSWORD":"<generate a new strong password>","SLACK_WEBHOOK_URL":"<Slack incoming webhook URL>"}' \
+    --region us-east-1
+  ```
+  - `SLACK_WEBHOOK_URL` is a real external credential; don't invent one. Reuse
+    the same webhook already used by `k8sgpt-secrets` (property
+    `SLACK_WEBHOOK_URL` on `sports-store/production/config`), or ask whoever
+    owns the `#k8s-ai-diagnostics`/alerts Slack workspace for a fresh one.
+  - Afterward, run the `terraform import` step above before the next
+    `terraform apply`, or it fails on the name collision you just created.
+- Either way, force an immediate ESO resync rather than waiting for the 1h
+  `refreshInterval`:
+  ```sh
+  kubectl annotate externalsecret grafana-admin -n monitoring force-sync="$(date +%s)" --overwrite
+  kubectl annotate externalsecret alertmanager-slack -n monitoring force-sync="$(date +%s)" --overwrite
+  ```
+- Confirm `kubectl get externalsecret -n monitoring` shows both
+  `SecretSynced`/`Ready=True`, then `kubectl get pods -n monitoring` shows
+  Grafana `3/3 Running` and the Alertmanager pod `2/2 Running`. No pod restart
+  is needed — kubelet retries `CreateContainerConfigError`/`PodInitializing`
+  pods automatically once the referenced Secret exists.
+
 ---
 
 ## 15. Glossary
