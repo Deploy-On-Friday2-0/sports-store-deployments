@@ -46,7 +46,7 @@ spec:
     - Deployment
   sink:
     type: slack
-    webhook: placeholder-dep-360
+    webhook: secret-managed
     secret:
       name: k8sgpt-secrets
       key: slack-webhook-url
@@ -76,7 +76,7 @@ spec:
     - Deployment
   sink:
     type: slack
-    webhook: placeholder-dep-360
+    webhook: secret-managed
     secret:
       name: k8sgpt-secrets
       key: slack-webhook-url
@@ -106,7 +106,7 @@ spec:
     - Deployment
   sink:
     type: slack
-    webhook: placeholder-dep-360
+    webhook: secret-managed
     secret:
       name: k8sgpt-secrets
       key: slack-webhook-url
@@ -136,7 +136,7 @@ spec:
     - Deployment
   sink:
     type: slack
-    webhook: placeholder-dep-360
+    webhook: secret-managed
     secret:
       name: k8sgpt-secrets
       key: slack-webhook-url
@@ -166,7 +166,7 @@ spec:
     - Deployment
   sink:
     type: slack
-    webhook: placeholder-dep-360
+    webhook: secret-managed
     secret:
       name: k8sgpt-secrets
       key: slack-webhook-url
