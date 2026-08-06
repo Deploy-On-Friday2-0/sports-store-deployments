@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CR = ROOT / "apps" / "k8sgpt" / "k8sgpt-cr.yaml"
-PLACEHOLDER = "placeholder-dep-360"
+PLACEHOLDER = "secret-managed"
 
 
 def fail(message: str) -> None:
