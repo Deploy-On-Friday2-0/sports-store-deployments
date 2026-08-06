@@ -32,8 +32,10 @@ def main() -> None:
         (r"ignoreDifferences:", "ignoreDifferences block"),
         (r"group:\s*networking\.k8s\.io", "ignoreDifferences group"),
         (r"kind:\s*Ingress", "ignoreDifferences kind"),
-        (r"managedFieldsManagers:", "managedFieldsManagers list"),
-        (r"-\s*argoproj\.io/rollouts", "rollouts manager entry"),
+        (r"jqPathExpressions:", "jqPathExpressions list"),
+        (r"\.metadata\.annotations\.\"alb\.ingress\.kubernetes\.io/actions\.catalog\"", "actions.catalog annotation path"),
+        (r"\.metadata\.annotations\.\"alb\.ingress\.kubernetes\.io/actions\.order\"", "actions.order annotation path"),
+        (r"\.metadata\.annotations\.\"rollouts\.argoproj\.io/managed-alb-annotations\"", "managed-alb-annotations path"),
     )
     for pattern, description in required:
         if not re.search(pattern, ingress_app, flags=re.MULTILINE):

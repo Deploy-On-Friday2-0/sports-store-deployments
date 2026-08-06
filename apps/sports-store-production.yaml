@@ -214,8 +214,10 @@ spec:
   ignoreDifferences:
     - group: networking.k8s.io
       kind: Ingress
-      managedFieldsManagers:
-        - argoproj.io/rollouts
+      jqPathExpressions:
+        - .metadata.annotations."alb.ingress.kubernetes.io/actions.catalog"
+        - .metadata.annotations."alb.ingress.kubernetes.io/actions.order"
+        - .metadata.annotations."rollouts.argoproj.io/managed-alb-annotations"
   syncPolicy:
     automated: {prune: true, selfHeal: true}
     syncOptions:
