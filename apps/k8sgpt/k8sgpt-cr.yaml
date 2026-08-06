@@ -161,9 +161,6 @@ spec:
     interval: 2m
   filters:
     - Pod
-    - Ingress
-    - Service
-    - Deployment
   sink:
     type: slack
     webhook: secret-managed
