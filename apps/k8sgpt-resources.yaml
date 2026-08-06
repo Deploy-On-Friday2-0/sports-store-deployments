@@ -10,7 +10,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/Deploy-On-Friday2-0/sports-store-deployments.git
-    targetRevision: main
+    targetRevision: k8sgpt/free-tier-quota
     path: apps/k8sgpt
   destination:
     server: https://kubernetes.default.svc
