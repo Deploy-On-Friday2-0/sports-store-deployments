@@ -42,7 +42,7 @@ spec:
             value: {{ $name }}
           - name: canary-hash
             valueFrom:
-              podTemplateHashValue: Canary
+              podTemplateHashValue: Latest
           - name: stable-hash
             valueFrom:
               podTemplateHashValue: Stable
