@@ -18,9 +18,12 @@ mongodb:
       - ReadWriteOnce
     size: 8Gi
   metrics:
-    # The chart-pinned exporter tag no longer exists upstream. Keep MongoDB
-    # available while metrics are repaired separately.
-    enabled: false
+    # The chart-pinned exporter tag no longer exists upstream. Use the
+    # bitnamilegacy image (same pattern as the Redis exporter below).
+    enabled: true
+    image:
+      repository: bitnamilegacy/mongodb-exporter
+      tag: 0.47.0-debian-12-r1
 
 redis:
   image:
