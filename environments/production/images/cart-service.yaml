@@ -1,6 +1,6 @@
 # Source of truth for the production cart-service image tag.
 image:
-  tag: &cartServiceTag 1.0.0-8e9a2b0
+  tag: &cartServiceTag 1.0.0-b9e9e8d
 services:
   cart:
     tag: *cartServiceTag
