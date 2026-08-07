@@ -7,6 +7,7 @@ values:
 templates:
   - templates/deployment.yaml
   - templates/canary-analysis.yaml
+  - templates/sports-store-servicemonitors.yaml
 tests:
   - it: wires the shared AnalysisTemplate into the catalog Rollout as background analysis
     set:
@@ -134,12 +135,9 @@ tests:
       - equal:
           path: spec.metrics[0].successCondition
           value: result[0] >= 0.995
-      - equal:
-          path: spec.metrics[0].requiredConsecutiveFailures
-          value: 2
       - matchRegex:
           path: spec.metrics[0].provider.prometheus.query
-          pattern: 'rollouts-pod-template-hash="\{\{args.canary-hash\}\}"[\s\S]*rollouts-pod-template-hash="\{\{args.stable-hash\}\}"'
+          pattern: 'rollouts_pod_template_hash="\{\{args.canary-hash\}\}"[\s\S]*rollouts_pod_template_hash="\{\{args.stable-hash\}\}"'
       - matchRegex:
           path: spec.metrics[0].provider.prometheus.query
           pattern: 'status=~"2xx\|3xx"'
@@ -156,12 +154,9 @@ tests:
       - equal:
           path: spec.metrics[1].successCondition
           value: result[0] >= 0.99
-      - equal:
-          path: spec.metrics[1].requiredConsecutiveFailures
-          value: 2
       - matchRegex:
           path: spec.metrics[1].provider.prometheus.query
-          pattern: 'rollouts-pod-template-hash="\{\{args.canary-hash\}\}".*status=~"2xx\|3xx"'
+          pattern: 'rollouts_pod_template_hash="\{\{args.canary-hash\}\}".*status=~"2xx\|3xx"'
 
   - it: renders the canary-only absolute latency gate
     set:
@@ -177,7 +172,7 @@ tests:
           value: result[0] < 0.250
       - matchRegex:
           path: spec.metrics[2].provider.prometheus.query
-          pattern: 'rollouts-pod-template-hash="\{\{args.canary-hash\}\}"'
+          pattern: 'rollouts_pod_template_hash="\{\{args.canary-hash\}\}"'
       - equal:
           path: spec.metrics[2].provider.prometheus.address
           value: http://prometheus-operated.monitoring.svc.cluster.local:9090
@@ -190,3 +185,23 @@ tests:
     asserts:
       - hasDocuments:
           count: 0
+
+  - it: transfers the ReplicaSet hash label onto scraped series for the gate queries
+    template: templates/sports-store-servicemonitors.yaml
+    set:
+      mongodb.enabled: false
+      redis.enabled: false
+      monitoring.serviceMonitor.enabled: true
+    asserts:
+      - isKind:
+          of: ServiceMonitor
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/part-of: sports-store
+      - equal:
+          path: spec.endpoints[0].port
+          value: http-metrics
+      - contains:
+          path: spec.podTargetLabels
+          content: rollouts-pod-template-hash

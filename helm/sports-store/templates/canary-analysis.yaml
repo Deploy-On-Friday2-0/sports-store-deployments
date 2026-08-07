@@ -23,7 +23,7 @@ spec:
     #    absolute number".
     # Label notes:
     #   namespace=                          scopes the query to sports-store pods
-    #   rollouts-pod-template-hash=         Argo Rollouts labels every pod with
+    #   rollouts_pod_template_hash=         Argo Rollouts labels every pod with
     #                                        its ReplicaSet hash; the canary-hash
     #                                        and stable-hash args resolve to the
     #                                        hashes of the canary/stable ReplicaSets.
@@ -34,21 +34,20 @@ spec:
       interval: 30s
       successCondition: result[0] >= 0.995
       failureLimit: 1
-      requiredConsecutiveFailures: 2
       provider:
         prometheus:
           address: http://prometheus-operated.monitoring.svc.cluster.local:9090
           query: |
             (
-              sum(rate(http_requests_total{namespace="sports-store", rollouts-pod-template-hash="{{`{{args.canary-hash}}`}}", status=~"2xx|3xx"}[1m]))
+              sum(rate(http_requests_total{namespace="sports-store", rollouts_pod_template_hash="{{`{{args.canary-hash}}`}}", status=~"2xx|3xx"}[1m]))
               /
-              sum(rate(http_requests_total{namespace="sports-store", rollouts-pod-template-hash="{{`{{args.canary-hash}}`}}"}[1m]))
+              sum(rate(http_requests_total{namespace="sports-store", rollouts_pod_template_hash="{{`{{args.canary-hash}}`}}"}[1m]))
             )
             /
             (
-              sum(rate(http_requests_total{namespace="sports-store", rollouts-pod-template-hash="{{`{{args.stable-hash}}`}}", status=~"2xx|3xx"}[1m]))
+              sum(rate(http_requests_total{namespace="sports-store", rollouts_pod_template_hash="{{`{{args.stable-hash}}`}}", status=~"2xx|3xx"}[1m]))
               /
-              sum(rate(http_requests_total{namespace="sports-store", rollouts-pod-template-hash="{{`{{args.stable-hash}}`}}"}[1m]))
+              sum(rate(http_requests_total{namespace="sports-store", rollouts_pod_template_hash="{{`{{args.stable-hash}}`}}"}[1m]))
             )
 
     # 2. Success-Rate Absolute Floor (BACKSTOP) — the canary's own success rate
@@ -61,14 +60,13 @@ spec:
       interval: 30s
       successCondition: result[0] >= 0.99
       failureLimit: 1
-      requiredConsecutiveFailures: 2
       provider:
         prometheus:
           address: http://prometheus-operated.monitoring.svc.cluster.local:9090
           query: |
-            sum(rate(http_requests_total{namespace="sports-store", rollouts-pod-template-hash="{{`{{args.canary-hash}}`}}", status=~"2xx|3xx"}[1m]))
+            sum(rate(http_requests_total{namespace="sports-store", rollouts_pod_template_hash="{{`{{args.canary-hash}}`}}", status=~"2xx|3xx"}[1m]))
             /
-            sum(rate(http_requests_total{namespace="sports-store", rollouts-pod-template-hash="{{`{{args.canary-hash}}`}}"}[1m]))
+            sum(rate(http_requests_total{namespace="sports-store", rollouts_pod_template_hash="{{`{{args.canary-hash}}`}}"}[1m]))
 
     # 3. P95 Latency — p95 < 250ms on the canary ReplicaSet only (absolute;
     #    relative latency ratios are noisy at low canary weights). Kept separate
@@ -77,10 +75,9 @@ spec:
       interval: 30s
       successCondition: result[0] < 0.250
       failureLimit: 1
-      requiredConsecutiveFailures: 2
       provider:
         prometheus:
           address: http://prometheus-operated.monitoring.svc.cluster.local:9090
           query: |
-            histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace="sports-store", rollouts-pod-template-hash="{{`{{args.canary-hash}}`}}"}[1m])) by (le))
+            histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace="sports-store", rollouts_pod_template_hash="{{`{{args.canary-hash}}`}}"}[1m])) by (le))
 {{- end }}
