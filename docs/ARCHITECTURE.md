@@ -296,8 +296,10 @@ and referenced by the catalog/order Rollouts as a **background analysis**,
 
 - **Success rate ≥ 99.5%** — checked every 30s over a 1-minute (`[1m]`) window
   (`2xx/3xx ÷ all` on `http_requests_total`, scoped to `namespace="sports-store"`
-  and `app=<service>` — `prometheus-fastapi-instrumentator` emits grouped
-  `2xx/3xx/4xx/5xx` status buckets).
+  and `job="<service>-canary"` — the canary Service is scraped under its own
+  job name, so the gate evaluates **only the new version's traffic**;
+  `prometheus-fastapi-instrumentator` emits grouped `2xx/3xx/4xx/5xx` status
+  buckets).
 - **p95 latency < 250 ms** — checked every 30s over a 1-minute (`[1m]`) window
   (`http_request_duration_seconds_bucket`).
 

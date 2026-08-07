@@ -98,10 +98,10 @@ tests:
           value: http://prometheus-operated.monitoring.svc.cluster.local:9090
       - matchRegex:
           path: spec.metrics[0].provider.prometheus.query
-          pattern: 'namespace="sports-store".*status=~"2xx|3xx".*app="\{\{args.service-name\}\}"'
+          pattern: 'namespace="sports-store".*status=~"2xx|3xx".*job="\{\{args.service-name\}\}-canary"'
       - matchRegex:
           path: spec.metrics[1].provider.prometheus.query
-          pattern: 'namespace="sports-store"'
+          pattern: 'namespace="sports-store".*job="\{\{args.service-name\}\}-canary"'
 
   - it: does not render the AnalysisTemplate when the release does not own it
     set:
