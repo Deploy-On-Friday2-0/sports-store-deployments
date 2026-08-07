@@ -294,8 +294,9 @@ created by the `production-catalog-service` release via `platform.createAnalysis
 and referenced by the catalog/order Rollouts as a **background analysis**,
 `startingStep: 1`) queries Prometheus in the `monitoring` namespace. The Rollout
 injects three args: `service-name`, plus `canary-hash` / `stable-hash` from
-`podTemplateHashValue` — the per-ReplicaSet pod labels
-(`rollouts-pod-template-hash=`) that Argo Rollouts adds automatically. Scoping
+`podTemplateHashValue` — the per-ReplicaSet pod label
+(`rollouts-pod-template-hash`, exported to Prometheus as
+`rollouts_pod_template_hash`) that Argo Rollouts adds automatically. Scoping
 every query by hash (not by job name or `app` label) means the gate measures
 **exactly the new version vs. the running baseline**:
 

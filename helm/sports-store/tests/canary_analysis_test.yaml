@@ -140,7 +140,7 @@ tests:
           value: 2
       - matchRegex:
           path: spec.metrics[0].provider.prometheus.query
-          pattern: 'rollouts-pod-template-hash="\{\{args.canary-hash\}\}"[\s\S]*rollouts-pod-template-hash="\{\{args.stable-hash\}\}"'
+          pattern: 'rollouts_pod_template_hash="\{\{args.canary-hash\}\}"[\s\S]*rollouts_pod_template_hash="\{\{args.stable-hash\}\}"'
       - matchRegex:
           path: spec.metrics[0].provider.prometheus.query
           pattern: 'status=~"2xx\|3xx"'
@@ -162,7 +162,7 @@ tests:
           value: 2
       - matchRegex:
           path: spec.metrics[1].provider.prometheus.query
-          pattern: 'rollouts-pod-template-hash="\{\{args.canary-hash\}\}".*status=~"2xx\|3xx"'
+          pattern: 'rollouts_pod_template_hash="\{\{args.canary-hash\}\}".*status=~"2xx\|3xx"'
 
   - it: renders the canary-only absolute latency gate
     set:
@@ -178,7 +178,7 @@ tests:
           value: result[0] < 0.250
       - matchRegex:
           path: spec.metrics[2].provider.prometheus.query
-          pattern: 'rollouts-pod-template-hash="\{\{args.canary-hash\}\}"'
+          pattern: 'rollouts_pod_template_hash="\{\{args.canary-hash\}\}"'
       - equal:
           path: spec.metrics[2].provider.prometheus.address
           value: http://prometheus-operated.monitoring.svc.cluster.local:9090
