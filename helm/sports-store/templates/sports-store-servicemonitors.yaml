@@ -12,6 +12,9 @@
 # Backend microservices: scrape every Service labeled
 # app.kubernetes.io/part-of: sports-store on the http-metrics port. Services
 # without that named port (frontend/gateway) produce no scrape target.
+# podTargetLabels transfers the Rollout ReplicaSet hash label
+# (rollouts-pod-template-hash) onto every scraped series - the DEP-364 canary
+# analysis scopes all its Prometheus queries by that label.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -27,6 +30,8 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/part-of: sports-store
+  podTargetLabels:
+    - rollouts-pod-template-hash
   endpoints:
     - port: http-metrics
       path: {{ .Values.monitoring.serviceMonitor.path }}

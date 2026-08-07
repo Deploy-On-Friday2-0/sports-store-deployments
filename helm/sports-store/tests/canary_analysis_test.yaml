@@ -7,6 +7,7 @@ values:
 templates:
   - templates/deployment.yaml
   - templates/canary-analysis.yaml
+  - templates/sports-store-servicemonitors.yaml
 tests:
   - it: wires the shared AnalysisTemplate into the catalog Rollout as background analysis
     set:
@@ -190,3 +191,23 @@ tests:
     asserts:
       - hasDocuments:
           count: 0
+
+  - it: transfers the ReplicaSet hash label onto scraped series for the gate queries
+    template: templates/sports-store-servicemonitors.yaml
+    set:
+      mongodb.enabled: false
+      redis.enabled: false
+      monitoring.serviceMonitor.enabled: true
+    asserts:
+      - isKind:
+          of: ServiceMonitor
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/part-of: sports-store
+      - equal:
+          path: spec.endpoints[0].port
+          value: http-metrics
+      - contains:
+          path: spec.podTargetLabels
+          content: rollouts-pod-template-hash
