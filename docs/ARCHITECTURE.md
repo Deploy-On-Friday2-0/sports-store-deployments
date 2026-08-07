@@ -317,13 +317,13 @@ every query by hash (not by job name or `app` label) means the gate measures
   cannot fail the new version.
 
 The analysis starts once the canary reaches its first pause (10% weight) and
-runs continuously through every step. Any metric failing `requiredConsecutiveFailures: 2`
-(effective `failureLimit: 1` at 30s intervals) aborts the Rollout
-**automatically** — no manual intervention or time-based promotion past a
-failing canary. The 2-minute pauses give each step four 30s-interval Prometheus
-checks before advancing. The `production-order-service` release references the
-shared template but does not own it (`createAnalysisTemplate: false`), avoiding
-a Helm resource-ownership conflict.
+runs continuously through every step. Any metric failing a single check
+(`failureLimit: 1` at 30s intervals) aborts the Rollout **automatically** — no
+manual intervention or time-based promotion past a failing canary. The 2-minute
+pauses give each step four 30s-interval Prometheus checks before advancing. The
+`production-order-service` release references the shared template but does not
+own it (`createAnalysisTemplate: false`), avoiding a Helm resource-ownership
+conflict.
 
 The Argo Rollouts controller receives its AWS permissions for target-group
 weighting via **EKS Pod Identity** (`argo-rollouts/argo-rollouts` service

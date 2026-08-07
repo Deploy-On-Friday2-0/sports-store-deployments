@@ -135,9 +135,6 @@ tests:
       - equal:
           path: spec.metrics[0].successCondition
           value: result[0] >= 0.995
-      - equal:
-          path: spec.metrics[0].requiredConsecutiveFailures
-          value: 2
       - matchRegex:
           path: spec.metrics[0].provider.prometheus.query
           pattern: 'rollouts_pod_template_hash="\{\{args.canary-hash\}\}"[\s\S]*rollouts_pod_template_hash="\{\{args.stable-hash\}\}"'
@@ -157,9 +154,6 @@ tests:
       - equal:
           path: spec.metrics[1].successCondition
           value: result[0] >= 0.99
-      - equal:
-          path: spec.metrics[1].requiredConsecutiveFailures
-          value: 2
       - matchRegex:
           path: spec.metrics[1].provider.prometheus.query
           pattern: 'rollouts_pod_template_hash="\{\{args.canary-hash\}\}".*status=~"2xx\|3xx"'

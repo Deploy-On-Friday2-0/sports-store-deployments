@@ -34,7 +34,6 @@ spec:
       interval: 30s
       successCondition: result[0] >= 0.995
       failureLimit: 1
-      requiredConsecutiveFailures: 2
       provider:
         prometheus:
           address: http://prometheus-operated.monitoring.svc.cluster.local:9090
@@ -61,7 +60,6 @@ spec:
       interval: 30s
       successCondition: result[0] >= 0.99
       failureLimit: 1
-      requiredConsecutiveFailures: 2
       provider:
         prometheus:
           address: http://prometheus-operated.monitoring.svc.cluster.local:9090
@@ -77,7 +75,6 @@ spec:
       interval: 30s
       successCondition: result[0] < 0.250
       failureLimit: 1
-      requiredConsecutiveFailures: 2
       provider:
         prometheus:
           address: http://prometheus-operated.monitoring.svc.cluster.local:9090
