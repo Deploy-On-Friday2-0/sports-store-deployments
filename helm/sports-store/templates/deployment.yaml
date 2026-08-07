@@ -28,6 +28,26 @@ spec:
     canary:
       stableService: {{ $name }}
       canaryService: {{ $name }}-canary
+      {{- if $.Values.platform.canaryAnalysis }}
+      # Background analysis: starts after the first setWeight step (10% canary
+      # traffic) and runs continuously throughout the rollout. Argo Rollouts
+      # injects the canary/stable ReplicaSet hashes via podTemplateHashValue, so
+      # the AnalysisTemplate can compare the new version against the running
+      # baseline and abort on regression — not just on absolute SLOs.
+      analysis:
+        templates:
+          - templateName: sports-store-canary-analysis
+        args:
+          - name: service-name
+            value: {{ $name }}
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Canary
+          - name: stable-hash
+            valueFrom:
+              podTemplateHashValue: Stable
+        startingStep: 1
+      {{- end }}
       trafficRouting:
         {{- if eq $.Values.ingress.className "alb" }}
         alb:
@@ -40,13 +60,15 @@ spec:
         {{- end }}
       steps:
         - setWeight: 10
-        - pause: { duration: 1m }
+        # 2-minute soaks give the AnalysisRun time to collect 4 Prometheus
+        # checks (interval: 30s) per step before advancing weight.
+        - pause: { duration: 2m }
         - setWeight: 25
-        - pause: { duration: 1m }
+        - pause: { duration: 2m }
         - setWeight: 50
-        - pause: { duration: 1m }
+        - pause: { duration: 2m }
         - setWeight: 75
-        - pause: { duration: 1m }
+        - pause: { duration: 2m }
   {{- end }}
   template:
     metadata:

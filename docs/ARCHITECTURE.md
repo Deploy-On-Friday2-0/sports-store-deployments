@@ -50,7 +50,7 @@ presentation script.
 - **Database-per-service** — no service reads another's data; they cooperate via HTTP.
 - **Everything as code** — application, cluster, and cloud are all declarative and version-controlled.
 - **GitOps** — the live cluster is continuously reconciled to Git; rollback is a `git revert`.
-- **Progressive, self-healing releases** — time-paused canary traffic shifting today; a Prometheus metric-gate (`AnalysisTemplate`) is defined and ready to wire in for automatic rollback on bad metrics (see §11).
+- **Progressive, self-healing releases** — canary traffic shifting with a Prometheus metric-gate (`AnalysisTemplate`) that compares the canary against the stable baseline and auto-aborts a rollout on regression (see §11).
 - **Zero static credentials** — OIDC and Pod Identity everywhere; secrets live in AWS Secrets Manager, never in Git.
 
 ---
@@ -286,24 +286,43 @@ plain Deployments) for progressive canary delivery, integrated with the AWS Load
 Balancer Controller for ALB **target-group weighting**.
 
 **Traffic steps** (`helm/sports-store/templates/deployment.yaml`):
-`10% (pause 1m) → 25% (pause 1m) → 50% (pause 1m) → 75% (pause 1m) → 100%`.
+`10% (pause 2m) → 25% (pause 2m) → 50% (pause 2m) → 75% (pause 2m) → 100%`.
 
-**Metric analysis (defined, not yet wired in).** An `AnalysisTemplate`
+**Metric analysis (wired in).** An `AnalysisTemplate`
 (`sports-store-canary-analysis`, in `helm/sports-store/templates/canary-analysis.yaml`,
-gated behind `platform.canaryAnalysis`) is provided and queries Prometheus in the
-`monitoring` namespace for:
+created by the `production-catalog-service` release via `platform.createAnalysisTemplate`
+and referenced by the catalog/order Rollouts as a **background analysis**,
+`startingStep: 1`) queries Prometheus in the `monitoring` namespace. The Rollout
+injects three args: `service-name`, plus `canary-hash` / `stable-hash` from
+`podTemplateHashValue` — the per-ReplicaSet pod labels
+(`rollouts-pod-template-hash=`) that Argo Rollouts adds automatically. Scoping
+every query by hash (not by job name or `app` label) means the gate measures
+**exactly the new version vs. the running baseline**:
 
-- **Success rate ≥ 99.5%** — checked every 30s over a 1-minute (`[1m]`) window
-  (`2xx/3xx ÷ all` on `http_requests_total`).
-- **p95 latency < 250 ms** — checked every 30s over a 1-minute (`[1m]`) window
-  (`http_request_duration_seconds_bucket`).
+- **Success-rate regression ratio ≥ 0.995 (primary)** — checked every 30s over a
+  1-minute (`[1m]`) window: the canary's success rate
+  (`2xx/3xx ÷ all` on `http_requests_total`, `prometheus-fastapi-instrumentator`
+  emits grouped `2xx/3xx/4xx/5xx` status buckets) divided by the stable's rate.
+  A *relative* comparison is immune to load: under the same request volume a 2%
+  error bug that is diluted by the 10–25% canary weight still yields ~98%
+  canary-scoped success (vs. ~100% stable), so the ratio drops well below the
+  threshold even though the aggregate success rate stays ≈ 99.8%.
+- **Absolute success-rate floor ≥ 0.99 (backstop)** — the same canary-only rate
+  must also hold on its own, so a regression cannot hide behind a stable version
+  that is *also* failing.
+- **Canary-only p95 latency < 250 ms** — checked every 30s over a 1-minute
+  (`[1m]`) window (`http_request_duration_seconds_bucket`); the stable
+  pod-template-hash (~414 ms p95 under load) is excluded so baseline slowness
+  cannot fail the new version.
 
-> **Current limitation.** The Rollout `steps` above contain only `setWeight` and
-> `pause` — there is **no `analysis` step referencing `sports-store-canary-analysis`**.
-> The canary therefore advances on the time-based pauses alone; the AnalysisTemplate
-> is **not** currently connected, so there is **no automated metric-gated abort or
-> rollback** yet. Wiring an `analysis` step into the Rollout is a follow-up
-> implementation change.
+The analysis starts once the canary reaches its first pause (10% weight) and
+runs continuously through every step. Any metric failing `requiredConsecutiveFailures: 2`
+(effective `failureLimit: 1` at 30s intervals) aborts the Rollout
+**automatically** — no manual intervention or time-based promotion past a
+failing canary. The 2-minute pauses give each step four 30s-interval Prometheus
+checks before advancing. The `production-order-service` release references the
+shared template but does not own it (`createAnalysisTemplate: false`), avoiding
+a Helm resource-ownership conflict.
 
 The Argo Rollouts controller receives its AWS permissions for target-group
 weighting via **EKS Pod Identity** (`argo-rollouts/argo-rollouts` service
@@ -363,7 +382,10 @@ scope:
 1. Merge the service PR to `main`. `publish.yml` builds, pushes to ECR, and writes
    the new tag to `deployments/environments/production/images/‹service›.yaml`.
 2. Argo CD detects the change and syncs. For `catalog`/`order`, the Rollout shifts
-   traffic through the time-paused canary steps (10→25→50→75→100%) before promoting.
+   traffic through the canary steps (10→25→50→75→100%, 2m soaks each) while the
+   background analysis gates every step on canary-vs-stable regression
+   (success-rate ratio ≥ 0.995, floor ≥ 0.99, p95 latency < 250 ms) —
+   a breached SLO aborts the rollout automatically before promoting.
 
 **Roll back**
 - Revert the image-tag (or manifest) commit in `sports-store-deployments` via PR.
@@ -457,7 +479,7 @@ scope:
 | **Kubernetes / EKS** | The system that runs containers and restarts/scales them automatically. |
 | **Terraform** | The cloud, described as code, so it's rebuildable and reviewable. |
 | **GitOps / Argo CD** | The cluster is continuously reconciled to match Git; deploys = commits. |
-| **Argo Rollouts** | Controller for gradual canary releases; supports metric-gated automatic rollback (metric gate defined but not yet wired in here — see §11). |
+| **Argo Rollouts** | Controller for gradual canary releases; supports metric-gated automatic rollback via background analysis against the stable baseline (see §11). |
 | **Prometheus / Grafana** | Metrics storage and dashboards. |
 | **Loki / Alloy** | Log storage and the agent that ships logs to it. |
 | **Kubecost** | Shows what each part of the cluster costs. |

@@ -123,7 +123,11 @@ spec:
         enabledServices: [catalog]
         fullnameOverride: sports-store-gateway
         ingress: {enabled: false}
-        platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: false}
+        # canaryAnalysis: true deploys the AnalysisTemplate (success-rate >= 99.5%,
+        # p95 latency < 250ms) and wires it as a background analysis on the catalog
+        # Rollout. The analysis starts at 10% weight and aborts the rollout if
+        # either SLO is breached — driven by real Prometheus traffic data.
+        platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: true}
         mongodb: {enabled: false}
         redis: {enabled: false}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
@@ -149,7 +153,12 @@ spec:
         enabledServices: [order]
         fullnameOverride: sports-store-gateway
         ingress: {enabled: false}
-        platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: false}
+        # canaryAnalysis: true wires the background AnalysisRun (success-rate
+        # >= 99.5%, p95 latency < 250ms) into the order Rollout.
+        # createAnalysisTemplate: false — the shared AnalysisTemplate object is
+        # owned by production-catalog-service; setting this false prevents a
+        # duplicate resource that would cause a Helm ownership conflict.
+        platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: true, createAnalysisTemplate: false}
         mongodb: {enabled: false}
         redis: {enabled: false}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
