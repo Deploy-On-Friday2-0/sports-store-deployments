@@ -28,6 +28,19 @@ spec:
     canary:
       stableService: {{ $name }}
       canaryService: {{ $name }}-canary
+      {{- if $.Values.platform.canaryAnalysis }}
+      # Background analysis: starts after the first setWeight step (10% canary
+      # traffic) and runs continuously throughout the rollout. If the
+      # AnalysisRun fails (success-rate < 99.5% or p95 latency > 250ms) the
+      # Rollout is aborted immediately, regardless of which step it is on.
+      analysis:
+        templates:
+          - templateName: sports-store-canary-analysis
+        args:
+          - name: service-name
+            value: {{ $name }}
+        startingStep: 1
+      {{- end }}
       trafficRouting:
         {{- if eq $.Values.ingress.className "alb" }}
         alb:
@@ -40,13 +53,15 @@ spec:
         {{- end }}
       steps:
         - setWeight: 10
-        - pause: { duration: 1m }
+        # 2-minute soaks give the AnalysisRun time to collect 4 Prometheus
+        # checks (interval: 30s) per step before advancing weight.
+        - pause: { duration: 2m }
         - setWeight: 25
-        - pause: { duration: 1m }
+        - pause: { duration: 2m }
         - setWeight: 50
-        - pause: { duration: 1m }
+        - pause: { duration: 2m }
         - setWeight: 75
-        - pause: { duration: 1m }
+        - pause: { duration: 2m }
   {{- end }}
   template:
     metadata:

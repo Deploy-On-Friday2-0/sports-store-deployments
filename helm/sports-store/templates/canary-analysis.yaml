@@ -1,4 +1,4 @@
-{{- if .Values.platform.canaryAnalysis }}
+{{- if .Values.platform.createAnalysisTemplate }}
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
 metadata:
@@ -10,7 +10,14 @@ spec:
   args:
     - name: service-name
   metrics:
-    # 1. Success Rate Metric Checks (SuccessRate >= 99.5%, checked every 30s over a 1m window)
+    # 1. Success Rate — SuccessRate >= 99.5%, checked every 30s over a 1m window.
+    # Label notes:
+    #   app=<service-name>   set by selectorLabels helper on every pod
+    #   namespace=           scopes the query to sports-store pods only
+    #   status=~"2xx|3xx"   prometheus-fastapi-instrumentator emits grouped
+    #                        status buckets ("2xx","3xx","4xx","5xx"), NOT raw
+    #                        status codes, so the pattern is "2.." NOT "2xx".
+    #                        The library uses label name "status", not "status_code".
     - name: success-rate
       interval: 30s
       successCondition: result[0] >= 0.995
@@ -19,11 +26,11 @@ spec:
         prometheus:
           address: http://prometheus-operated.monitoring.svc.cluster.local:9090
           query: |
-            sum(rate(http_requests_total{status=~"2..|3..", app="{{`{{args.service-name}}`}}"}[1m]))
+            sum(rate(http_requests_total{namespace="sports-store", app="{{`{{args.service-name}}`}}", status=~"2xx|3xx"}[1m]))
             /
-            sum(rate(http_requests_total{app="{{`{{args.service-name}}`}}"}[1m]))
+            sum(rate(http_requests_total{namespace="sports-store", app="{{`{{args.service-name}}`}}"}[1m]))
 
-    # 2. P95 Latency Metric Checks (P95 < 250ms, checked every 30s over a 1m window)
+    # 2. P95 Latency — p95 < 250ms, checked every 30s over a 1m window.
     - name: latency
       interval: 30s
       successCondition: result[0] < 0.250
@@ -32,5 +39,5 @@ spec:
         prometheus:
           address: http://prometheus-operated.monitoring.svc.cluster.local:9090
           query: |
-            histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app="{{`{{args.service-name}}`}}"}[1m])) by (le))
+            histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace="sports-store", app="{{`{{args.service-name}}`}}"}[1m])) by (le))
 {{- end }}

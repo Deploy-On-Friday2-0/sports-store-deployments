@@ -1,0 +1,113 @@
+suite: Canary analysis gate contract (DEP-364)
+release:
+  name: sports-store-gateway
+  namespace: sports-store
+values:
+  - ../values-eks.yaml
+templates:
+  - templates/deployment.yaml
+  - templates/canary-analysis.yaml
+tests:
+  - it: wires the shared AnalysisTemplate into the catalog Rollout as background analysis
+    set:
+      enabledServices: [catalog, order, auth]
+      platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: true}
+    template: templates/deployment.yaml
+    documentSelector: {path: metadata.name, value: catalog}
+    asserts:
+      - isKind:
+          of: Rollout
+      - equal:
+          path: spec.strategy.canary.analysis.templates[0].templateName
+          value: sports-store-canary-analysis
+      - equal:
+          path: spec.strategy.canary.analysis.startingStep
+          value: 1
+      - equal:
+          path: spec.strategy.canary.analysis.args[0].name
+          value: service-name
+      - equal:
+          path: spec.strategy.canary.analysis.args[0].value
+          value: catalog
+
+  - it: wires the shared AnalysisTemplate into the order Rollout with its own service name
+    set:
+      enabledServices: [catalog, order, auth]
+      platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: true}
+    template: templates/deployment.yaml
+    documentSelector: {path: metadata.name, value: order}
+    asserts:
+      - isKind:
+          of: Rollout
+      - equal:
+          path: spec.strategy.canary.analysis.templates[0].templateName
+          value: sports-store-canary-analysis
+      - equal:
+          path: spec.strategy.canary.analysis.args[0].value
+          value: order
+
+  - it: soaks each canary weight step for 2 minutes so the analysis collects 4 checks
+    set:
+      enabledServices: [catalog]
+      platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: true}
+    template: templates/deployment.yaml
+    documentSelector: {path: metadata.name, value: catalog}
+    asserts:
+      - equal:
+          path: spec.strategy.canary.steps
+          value:
+            - {setWeight: 10}
+            - {pause: {duration: 2m}}
+            - {setWeight: 25}
+            - {pause: {duration: 2m}}
+            - {setWeight: 50}
+            - {pause: {duration: 2m}}
+            - {setWeight: 75}
+            - {pause: {duration: 2m}}
+
+  - it: keeps non-rollout services as plain Deployments even when analysis is enabled
+    set:
+      enabledServices: [catalog, order, auth]
+      platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: true}
+    template: templates/deployment.yaml
+    documentSelector: {path: metadata.name, value: auth}
+    asserts:
+      - isKind:
+          of: Deployment
+
+  - it: renders no analysis block when canaryAnalysis is disabled
+    set:
+      enabledServices: [catalog]
+      platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: false}
+    template: templates/deployment.yaml
+    documentSelector: {path: metadata.name, value: catalog}
+    asserts:
+      - notExists:
+          path: spec.strategy.canary.analysis
+
+  - it: renders the shared AnalysisTemplate with scoped Prometheus queries
+    set:
+      enabledServices: [catalog]
+      platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: true}
+    template: templates/canary-analysis.yaml
+    asserts:
+      - isKind:
+          of: AnalysisTemplate
+      - equal:
+          path: spec.metrics[0].provider.prometheus.address
+          value: http://prometheus-operated.monitoring.svc.cluster.local:9090
+      - matchRegex:
+          path: spec.metrics[0].provider.prometheus.query
+          pattern: 'namespace="sports-store".*status=~"2xx|3xx".*app="\{\{args.service-name\}\}"'
+      - matchRegex:
+          path: spec.metrics[1].provider.prometheus.query
+          pattern: 'namespace="sports-store"'
+
+  - it: does not render the AnalysisTemplate when the release does not own it
+    set:
+      enabledServices: [catalog, order]
+      platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: true, createAnalysisTemplate: false}
+    template: templates/canary-analysis.yaml
+    asserts:
+      - hasDocuments:
+          count: 0

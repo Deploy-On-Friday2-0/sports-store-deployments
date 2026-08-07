@@ -32,6 +32,11 @@ platform:
   externalSecret: true
   mongodbInit: true
   canaryAnalysis: true
+  # Controls whether this Helm release creates the AnalysisTemplate object.
+  # Set to false on releases that reference the template but should not own it
+  # (e.g. production-order-service, to avoid Helm resource-ownership conflicts
+  # with production-catalog-service which owns the shared template).
+  createAnalysisTemplate: true
 
 containerSecurityContext:
   runAsNonRoot: true

@@ -50,7 +50,7 @@ presentation script.
 - **Database-per-service** — no service reads another's data; they cooperate via HTTP.
 - **Everything as code** — application, cluster, and cloud are all declarative and version-controlled.
 - **GitOps** — the live cluster is continuously reconciled to Git; rollback is a `git revert`.
-- **Progressive, self-healing releases** — time-paused canary traffic shifting today; a Prometheus metric-gate (`AnalysisTemplate`) is defined and ready to wire in for automatic rollback on bad metrics (see §11).
+- **Progressive, self-healing releases** — canary traffic shifting with a Prometheus metric-gate (`AnalysisTemplate`) that auto-aborts a rollout whose success rate drops below 99.5% or p95 latency exceeds 250 ms (see §11).
 - **Zero static credentials** — OIDC and Pod Identity everywhere; secrets live in AWS Secrets Manager, never in Git.
 
 ---
@@ -286,24 +286,29 @@ plain Deployments) for progressive canary delivery, integrated with the AWS Load
 Balancer Controller for ALB **target-group weighting**.
 
 **Traffic steps** (`helm/sports-store/templates/deployment.yaml`):
-`10% (pause 1m) → 25% (pause 1m) → 50% (pause 1m) → 75% (pause 1m) → 100%`.
+`10% (pause 2m) → 25% (pause 2m) → 50% (pause 2m) → 75% (pause 2m) → 100%`.
 
-**Metric analysis (defined, not yet wired in).** An `AnalysisTemplate`
+**Metric analysis (wired in).** An `AnalysisTemplate`
 (`sports-store-canary-analysis`, in `helm/sports-store/templates/canary-analysis.yaml`,
-gated behind `platform.canaryAnalysis`) is provided and queries Prometheus in the
-`monitoring` namespace for:
+created by the `production-catalog-service` release via `platform.createAnalysisTemplate`
+and referenced by the catalog/order Rollouts as a **background analysis**,
+`startingStep: 1`) queries Prometheus in the `monitoring` namespace for:
 
 - **Success rate ≥ 99.5%** — checked every 30s over a 1-minute (`[1m]`) window
-  (`2xx/3xx ÷ all` on `http_requests_total`).
+  (`2xx/3xx ÷ all` on `http_requests_total`, scoped to `namespace="sports-store"`
+  and `app=<service>` — `prometheus-fastapi-instrumentator` emits grouped
+  `2xx/3xx/4xx/5xx` status buckets).
 - **p95 latency < 250 ms** — checked every 30s over a 1-minute (`[1m]`) window
   (`http_request_duration_seconds_bucket`).
 
-> **Current limitation.** The Rollout `steps` above contain only `setWeight` and
-> `pause` — there is **no `analysis` step referencing `sports-store-canary-analysis`**.
-> The canary therefore advances on the time-based pauses alone; the AnalysisTemplate
-> is **not** currently connected, so there is **no automated metric-gated abort or
-> rollback** yet. Wiring an `analysis` step into the Rollout is a follow-up
-> implementation change.
+The analysis starts once the canary reaches its first pause (10% weight) and
+runs continuously through every step. If either SLO is breached
+(`failureLimit: 1`) the Rollout is **aborted automatically** — no manual
+intervention or time-based promotion past a failing canary. The 2-minute pauses
+give each step four 30s-interval Prometheus checks before advancing. The
+`production-order-service` release references the shared template but does not
+own it (`createAnalysisTemplate: false`), avoiding a Helm resource-ownership
+conflict.
 
 The Argo Rollouts controller receives its AWS permissions for target-group
 weighting via **EKS Pod Identity** (`argo-rollouts/argo-rollouts` service
@@ -363,7 +368,9 @@ scope:
 1. Merge the service PR to `main`. `publish.yml` builds, pushes to ECR, and writes
    the new tag to `deployments/environments/production/images/‹service›.yaml`.
 2. Argo CD detects the change and syncs. For `catalog`/`order`, the Rollout shifts
-   traffic through the time-paused canary steps (10→25→50→75→100%) before promoting.
+   traffic through the canary steps (10→25→50→75→100%, 2m soaks each) while the
+   background analysis verifies success rate ≥ 99.5% and p95 latency < 250 ms —
+   a breached SLO aborts the rollout automatically before promoting.
 
 **Roll back**
 - Revert the image-tag (or manifest) commit in `sports-store-deployments` via PR.
