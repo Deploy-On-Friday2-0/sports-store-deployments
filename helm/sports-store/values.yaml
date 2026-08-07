@@ -225,10 +225,10 @@ services:
             key: MONGO_URI
     resources:
       requests:
-        cpu: 100m
+        cpu: 500m
         memory: 128Mi
       limits:
-        cpu: 250m
+        cpu: 1000m
         memory: 256Mi
     autoscaling:
       enabled: false
