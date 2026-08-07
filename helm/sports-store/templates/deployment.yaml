@@ -30,15 +30,22 @@ spec:
       canaryService: {{ $name }}-canary
       {{- if $.Values.platform.canaryAnalysis }}
       # Background analysis: starts after the first setWeight step (10% canary
-      # traffic) and runs continuously throughout the rollout. If the
-      # AnalysisRun fails (success-rate < 99.5% or p95 latency > 250ms) the
-      # Rollout is aborted immediately, regardless of which step it is on.
+      # traffic) and runs continuously throughout the rollout. Argo Rollouts
+      # injects the canary/stable ReplicaSet hashes via podTemplateHashValue, so
+      # the AnalysisTemplate can compare the new version against the running
+      # baseline and abort on regression — not just on absolute SLOs.
       analysis:
         templates:
           - templateName: sports-store-canary-analysis
         args:
           - name: service-name
             value: {{ $name }}
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Canary
+          - name: stable-hash
+            valueFrom:
+              podTemplateHashValue: Stable
         startingStep: 1
       {{- end }}
       trafficRouting:

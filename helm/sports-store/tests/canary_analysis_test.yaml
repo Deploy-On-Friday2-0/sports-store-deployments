@@ -23,12 +23,26 @@ tests:
       - equal:
           path: spec.strategy.canary.analysis.startingStep
           value: 1
-      - equal:
-          path: spec.strategy.canary.analysis.args[0].name
-          value: service-name
-      - equal:
-          path: spec.strategy.canary.analysis.args[0].value
-          value: catalog
+      - contains:
+          path: spec.strategy.canary.analysis.args
+          content:
+            name: service-name
+            value: catalog
+          any: true
+      - contains:
+          path: spec.strategy.canary.analysis.args
+          content:
+            name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Canary
+          any: true
+      - contains:
+          path: spec.strategy.canary.analysis.args
+          content:
+            name: stable-hash
+            valueFrom:
+              podTemplateHashValue: Stable
+          any: true
 
   - it: wires the shared AnalysisTemplate into the order Rollout with its own service name
     set:
@@ -42,9 +56,19 @@ tests:
       - equal:
           path: spec.strategy.canary.analysis.templates[0].templateName
           value: sports-store-canary-analysis
-      - equal:
-          path: spec.strategy.canary.analysis.args[0].value
-          value: order
+      - contains:
+          path: spec.strategy.canary.analysis.args
+          content:
+            name: service-name
+            value: order
+          any: true
+      - contains:
+          path: spec.strategy.canary.analysis.args
+          content:
+            name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Canary
+          any: true
 
   - it: soaks each canary weight step for 2 minutes so the analysis collects 4 checks
     set:
@@ -85,23 +109,78 @@ tests:
       - notExists:
           path: spec.strategy.canary.analysis
 
-  - it: renders the shared AnalysisTemplate with scoped Prometheus queries
+  - it: declares the hash args the Rollout must inject
     set:
       enabledServices: [catalog]
       platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: true}
     template: templates/canary-analysis.yaml
     asserts:
-      - isKind:
-          of: AnalysisTemplate
       - equal:
-          path: spec.metrics[0].provider.prometheus.address
-          value: http://prometheus-operated.monitoring.svc.cluster.local:9090
+          path: spec.args
+          value:
+            - {name: service-name}
+            - {name: canary-hash}
+            - {name: stable-hash}
+
+  - it: renders the regression ratio as the primary success-rate gate
+    set:
+      enabledServices: [catalog]
+      platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: true}
+    template: templates/canary-analysis.yaml
+    asserts:
+      - equal:
+          path: spec.metrics[0].name
+          value: success-rate-ratio
+      - equal:
+          path: spec.metrics[0].successCondition
+          value: result[0] >= 0.995
+      - equal:
+          path: spec.metrics[0].requiredConsecutiveFailures
+          value: 2
       - matchRegex:
           path: spec.metrics[0].provider.prometheus.query
-          pattern: 'namespace="sports-store".*status=~"2xx|3xx".*job="\{\{args.service-name\}\}-canary"'
+          pattern: 'rollouts-pod-template-hash="\{\{args.canary-hash\}\}"[\s\S]*rollouts-pod-template-hash="\{\{args.stable-hash\}\}"'
+      - matchRegex:
+          path: spec.metrics[0].provider.prometheus.query
+          pattern: 'status=~"2xx\|3xx"'
+
+  - it: renders the absolute success-rate floor as a backstop metric
+    set:
+      enabledServices: [catalog]
+      platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: true}
+    template: templates/canary-analysis.yaml
+    asserts:
+      - equal:
+          path: spec.metrics[1].name
+          value: success-rate-floor
+      - equal:
+          path: spec.metrics[1].successCondition
+          value: result[0] >= 0.99
+      - equal:
+          path: spec.metrics[1].requiredConsecutiveFailures
+          value: 2
       - matchRegex:
           path: spec.metrics[1].provider.prometheus.query
-          pattern: 'namespace="sports-store".*job="\{\{args.service-name\}\}-canary"'
+          pattern: 'rollouts-pod-template-hash="\{\{args.canary-hash\}\}".*status=~"2xx\|3xx"'
+
+  - it: renders the canary-only absolute latency gate
+    set:
+      enabledServices: [catalog]
+      platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: true}
+    template: templates/canary-analysis.yaml
+    asserts:
+      - equal:
+          path: spec.metrics[2].name
+          value: latency
+      - equal:
+          path: spec.metrics[2].successCondition
+          value: result[0] < 0.250
+      - matchRegex:
+          path: spec.metrics[2].provider.prometheus.query
+          pattern: 'rollouts-pod-template-hash="\{\{args.canary-hash\}\}"'
+      - equal:
+          path: spec.metrics[2].provider.prometheus.address
+          value: http://prometheus-operated.monitoring.svc.cluster.local:9090
 
   - it: does not render the AnalysisTemplate when the release does not own it
     set:

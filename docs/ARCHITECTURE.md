@@ -50,7 +50,7 @@ presentation script.
 - **Database-per-service** — no service reads another's data; they cooperate via HTTP.
 - **Everything as code** — application, cluster, and cloud are all declarative and version-controlled.
 - **GitOps** — the live cluster is continuously reconciled to Git; rollback is a `git revert`.
-- **Progressive, self-healing releases** — canary traffic shifting with a Prometheus metric-gate (`AnalysisTemplate`) that auto-aborts a rollout whose success rate drops below 99.5% or p95 latency exceeds 250 ms (see §11).
+- **Progressive, self-healing releases** — canary traffic shifting with a Prometheus metric-gate (`AnalysisTemplate`) that compares the canary against the stable baseline and auto-aborts a rollout on regression (see §11).
 - **Zero static credentials** — OIDC and Pod Identity everywhere; secrets live in AWS Secrets Manager, never in Git.
 
 ---
@@ -292,25 +292,37 @@ Balancer Controller for ALB **target-group weighting**.
 (`sports-store-canary-analysis`, in `helm/sports-store/templates/canary-analysis.yaml`,
 created by the `production-catalog-service` release via `platform.createAnalysisTemplate`
 and referenced by the catalog/order Rollouts as a **background analysis**,
-`startingStep: 1`) queries Prometheus in the `monitoring` namespace for:
+`startingStep: 1`) queries Prometheus in the `monitoring` namespace. The Rollout
+injects three args: `service-name`, plus `canary-hash` / `stable-hash` from
+`podTemplateHashValue` — the per-ReplicaSet pod labels
+(`rollouts-pod-template-hash=`) that Argo Rollouts adds automatically. Scoping
+every query by hash (not by job name or `app` label) means the gate measures
+**exactly the new version vs. the running baseline**:
 
-- **Success rate ≥ 99.5%** — checked every 30s over a 1-minute (`[1m]`) window
-  (`2xx/3xx ÷ all` on `http_requests_total`, scoped to `namespace="sports-store"`
-  and `job="<service>-canary"` — the canary Service is scraped under its own
-  job name, so the gate evaluates **only the new version's traffic**;
-  `prometheus-fastapi-instrumentator` emits grouped `2xx/3xx/4xx/5xx` status
-  buckets).
-- **p95 latency < 250 ms** — checked every 30s over a 1-minute (`[1m]`) window
-  (`http_request_duration_seconds_bucket`).
+- **Success-rate regression ratio ≥ 0.995 (primary)** — checked every 30s over a
+  1-minute (`[1m]`) window: the canary's success rate
+  (`2xx/3xx ÷ all` on `http_requests_total`, `prometheus-fastapi-instrumentator`
+  emits grouped `2xx/3xx/4xx/5xx` status buckets) divided by the stable's rate.
+  A *relative* comparison is immune to load: under the same request volume a 2%
+  error bug that is diluted by the 10–25% canary weight still yields ~98%
+  canary-scoped success (vs. ~100% stable), so the ratio drops well below the
+  threshold even though the aggregate success rate stays ≈ 99.8%.
+- **Absolute success-rate floor ≥ 0.99 (backstop)** — the same canary-only rate
+  must also hold on its own, so a regression cannot hide behind a stable version
+  that is *also* failing.
+- **Canary-only p95 latency < 250 ms** — checked every 30s over a 1-minute
+  (`[1m]`) window (`http_request_duration_seconds_bucket`); the stable
+  pod-template-hash (~414 ms p95 under load) is excluded so baseline slowness
+  cannot fail the new version.
 
 The analysis starts once the canary reaches its first pause (10% weight) and
-runs continuously through every step. If either SLO is breached
-(`failureLimit: 1`) the Rollout is **aborted automatically** — no manual
-intervention or time-based promotion past a failing canary. The 2-minute pauses
-give each step four 30s-interval Prometheus checks before advancing. The
-`production-order-service` release references the shared template but does not
-own it (`createAnalysisTemplate: false`), avoiding a Helm resource-ownership
-conflict.
+runs continuously through every step. Any metric failing `requiredConsecutiveFailures: 2`
+(effective `failureLimit: 1` at 30s intervals) aborts the Rollout
+**automatically** — no manual intervention or time-based promotion past a
+failing canary. The 2-minute pauses give each step four 30s-interval Prometheus
+checks before advancing. The `production-order-service` release references the
+shared template but does not own it (`createAnalysisTemplate: false`), avoiding
+a Helm resource-ownership conflict.
 
 The Argo Rollouts controller receives its AWS permissions for target-group
 weighting via **EKS Pod Identity** (`argo-rollouts/argo-rollouts` service
@@ -371,7 +383,8 @@ scope:
    the new tag to `deployments/environments/production/images/‹service›.yaml`.
 2. Argo CD detects the change and syncs. For `catalog`/`order`, the Rollout shifts
    traffic through the canary steps (10→25→50→75→100%, 2m soaks each) while the
-   background analysis verifies success rate ≥ 99.5% and p95 latency < 250 ms —
+   background analysis gates every step on canary-vs-stable regression
+   (success-rate ratio ≥ 0.995, floor ≥ 0.99, p95 latency < 250 ms) —
    a breached SLO aborts the rollout automatically before promoting.
 
 **Roll back**
@@ -466,7 +479,7 @@ scope:
 | **Kubernetes / EKS** | The system that runs containers and restarts/scales them automatically. |
 | **Terraform** | The cloud, described as code, so it's rebuildable and reviewable. |
 | **GitOps / Argo CD** | The cluster is continuously reconciled to match Git; deploys = commits. |
-| **Argo Rollouts** | Controller for gradual canary releases; supports metric-gated automatic rollback (metric gate defined but not yet wired in here — see §11). |
+| **Argo Rollouts** | Controller for gradual canary releases; supports metric-gated automatic rollback via background analysis against the stable baseline (see §11). |
 | **Prometheus / Grafana** | Metrics storage and dashboards. |
 | **Loki / Alloy** | Log storage and the agent that ships logs to it. |
 | **Kubecost** | Shows what each part of the cluster costs. |

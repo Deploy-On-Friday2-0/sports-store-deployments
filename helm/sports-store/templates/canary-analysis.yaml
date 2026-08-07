@@ -9,38 +9,78 @@ metadata:
 spec:
   args:
     - name: service-name
+    - name: canary-hash
+    - name: stable-hash
   metrics:
-    # 1. Success Rate — SuccessRate >= 99.5%, checked every 30s over a 1m window.
+    # 1. Success-Rate Regression Ratio (PRIMARY) — the canary's success rate must
+    #    stay >= 99.5% of the STABLE version's success rate. The canary-hash /
+    #    stable-hash args are injected by the Rollout via podTemplateHashValue,
+    #    so both sides are measured from their own ReplicaSet pods. Because it
+    #    is a RELATIVE comparison against the running baseline, load-induced
+    #    latency or shared degradation affects both sides equally and cannot
+    #    cause a false abort — the gate answers "is the new version any worse
+    #    than what is running right now?", not "is the whole service meeting an
+    #    absolute number".
     # Label notes:
-    #   job=<service>-canary  the canary Service is scraped under its own job
-    #                          name (e.g. job="catalog-canary"), so the gate
-    #                          evaluates ONLY the new version's traffic. The
-    #                          stable Service's load cannot fail the analysis.
-    #   namespace=            scopes the query to sports-store pods only
-    #   status=~"2xx|3xx"     prometheus-fastapi-instrumentator emits grouped
-    #                          status buckets ("2xx","3xx","4xx","5xx"), NOT raw
-    #                          status codes, so the pattern is "2xx|3xx".
-    #                          The library uses label name "status", not "status_code".
-    - name: success-rate
+    #   namespace=                          scopes the query to sports-store pods
+    #   rollouts-pod-template-hash=         Argo Rollouts labels every pod with
+    #                                        its ReplicaSet hash; the canary-hash
+    #                                        and stable-hash args resolve to the
+    #                                        hashes of the canary/stable ReplicaSets.
+    #   status=~"2xx|3xx"                   prometheus-fastapi-instrumentator emits
+    #                                        grouped status buckets ("2xx","3xx",
+    #                                        "4xx","5xx"), NOT raw status codes.
+    - name: success-rate-ratio
       interval: 30s
       successCondition: result[0] >= 0.995
       failureLimit: 1
+      requiredConsecutiveFailures: 2
       provider:
         prometheus:
           address: http://prometheus-operated.monitoring.svc.cluster.local:9090
           query: |
-            sum(rate(http_requests_total{namespace="sports-store", job="{{`{{args.service-name}}`}}-canary", status=~"2xx|3xx"}[1m]))
+            (
+              sum(rate(http_requests_total{namespace="sports-store", rollouts-pod-template-hash="{{`{{args.canary-hash}}`}}", status=~"2xx|3xx"}[1m]))
+              /
+              sum(rate(http_requests_total{namespace="sports-store", rollouts-pod-template-hash="{{`{{args.canary-hash}}`}}"}[1m]))
+            )
             /
-            sum(rate(http_requests_total{namespace="sports-store", job="{{`{{args.service-name}}`}}-canary"}[1m]))
+            (
+              sum(rate(http_requests_total{namespace="sports-store", rollouts-pod-template-hash="{{`{{args.stable-hash}}`}}", status=~"2xx|3xx"}[1m]))
+              /
+              sum(rate(http_requests_total{namespace="sports-store", rollouts-pod-template-hash="{{`{{args.stable-hash}}`}}"}[1m]))
+            )
 
-    # 2. P95 Latency — p95 < 250ms, checked every 30s over a 1m window.
+    # 2. Success-Rate Absolute Floor (BACKSTOP) — the canary's own success rate
+    #    must stay >= 99%. This guards the one case the relative ratio cannot
+    #    see: a shared degradation where the STABLE version is ALSO failing
+    #    (dependency outage, MongoDB down, etc.) — the ratio would stay ~1.0
+    #    while production is on fire. The floor guarantees the canary never
+    #    promotes while its absolute error rate is out of bounds.
+    - name: success-rate-floor
+      interval: 30s
+      successCondition: result[0] >= 0.99
+      failureLimit: 1
+      requiredConsecutiveFailures: 2
+      provider:
+        prometheus:
+          address: http://prometheus-operated.monitoring.svc.cluster.local:9090
+          query: |
+            sum(rate(http_requests_total{namespace="sports-store", rollouts-pod-template-hash="{{`{{args.canary-hash}}`}}", status=~"2xx|3xx"}[1m]))
+            /
+            sum(rate(http_requests_total{namespace="sports-store", rollouts-pod-template-hash="{{`{{args.canary-hash}}`}}"}[1m]))
+
+    # 3. P95 Latency — p95 < 250ms on the canary ReplicaSet only (absolute;
+    #    relative latency ratios are noisy at low canary weights). Kept separate
+    #    so a latency regression aborts independently of the success-rate gates.
     - name: latency
       interval: 30s
       successCondition: result[0] < 0.250
       failureLimit: 1
+      requiredConsecutiveFailures: 2
       provider:
         prometheus:
           address: http://prometheus-operated.monitoring.svc.cluster.local:9090
           query: |
-            histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace="sports-store", job="{{`{{args.service-name}}`}}-canary"}[1m])) by (le))
+            histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace="sports-store", rollouts-pod-template-hash="{{`{{args.canary-hash}}`}}"}[1m])) by (le))
 {{- end }}
