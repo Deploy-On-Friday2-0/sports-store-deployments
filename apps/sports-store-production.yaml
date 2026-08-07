@@ -19,6 +19,12 @@ spec:
         enabledServices: []
         ingress: {enabled: false}
         redis: {enabled: false}
+        # Owns the app-secrets ExternalSecret, the mongodb-init script, and the
+        # shared platform-wide backend ServiceMonitor (already declared above).
+        # createAnalysisTemplate: false — the AnalysisTemplate is owned by
+        # production-catalog-service; the Helm default (true) would make this
+        # release fight catalog for it on every sync.
+        platform: {externalSecret: true, mongodbInit: true, canaryAnalysis: false, createAnalysisTemplate: false}
         # Single owner of the shared platform-wide backend ServiceMonitor
         # (this release already owns the other platform singletons).
         monitoring: {serviceMonitor: {enabled: true}}
@@ -44,7 +50,7 @@ spec:
       valueFiles: [values-eks.yaml]
       values: |
         enabledServices: []
-        platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: false}
+        platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: false, createAnalysisTemplate: false}
         ingress: {enabled: false}
         mongodb: {enabled: false}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
@@ -72,7 +78,7 @@ spec:
       values: |
         enabledServices: [auth]
         ingress: {enabled: false}
-        platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: false}
+        platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: false, createAnalysisTemplate: false}
         mongodb: {enabled: false}
         redis: {enabled: false}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
@@ -97,7 +103,7 @@ spec:
       values: |
         enabledServices: [cart]
         ingress: {enabled: false}
-        platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: false}
+        platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: false, createAnalysisTemplate: false}
         mongodb: {enabled: false}
         redis: {enabled: false}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
@@ -183,7 +189,7 @@ spec:
       values: |
         enabledServices: [payment]
         ingress: {enabled: false}
-        platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: false}
+        platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: false, createAnalysisTemplate: false}
         mongodb: {enabled: false}
         redis: {enabled: false}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
@@ -216,7 +222,7 @@ spec:
         fullnameOverride: sports-store-gateway
         enabledServices: []
         ingressServices: [auth, catalog, cart, order, payment]
-        platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: false}
+        platform: {externalSecret: false, mongodbInit: false, canaryAnalysis: false, createAnalysisTemplate: false}
         mongodb: {enabled: false}
         redis: {enabled: false}
   destination: {server: https://kubernetes.default.svc, namespace: sports-store}
