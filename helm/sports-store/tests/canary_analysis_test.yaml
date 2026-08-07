@@ -35,7 +35,7 @@ tests:
           content:
             name: canary-hash
             valueFrom:
-              podTemplateHashValue: Canary
+              podTemplateHashValue: Latest
           any: true
       - contains:
           path: spec.strategy.canary.analysis.args
@@ -68,7 +68,7 @@ tests:
           content:
             name: canary-hash
             valueFrom:
-              podTemplateHashValue: Canary
+              podTemplateHashValue: Latest
           any: true
 
   - it: soaks each canary weight step for 2 minutes so the analysis collects 4 checks
