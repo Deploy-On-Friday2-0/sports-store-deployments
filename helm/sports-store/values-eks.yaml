@@ -17,11 +17,8 @@ mongodb:
     accessModes:
       - ReadWriteOnce
     size: 8Gi
-  # The hard zone anti-affinity above forces the third member onto the least
-  # loaded zone's node. The Bitnami chart default request of 250m plus the
-  # 100m exporter exceeded the ~350m spare CPU there, leaving the member
-  # Pending with "Insufficient cpu". 100m keeps the cluster schedulable on a
-  # 2vCPU t3.medium while requests still reserve an effective amount.
+  # 100m fits the least-loaded zone node that the hard anti-affinity forces
+  # the third replica onto; the Bitnami default of 250m left it Pending.
   resources:
     requests:
       cpu: 100m
