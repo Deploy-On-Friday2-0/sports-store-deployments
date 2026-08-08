@@ -17,8 +17,6 @@ mongodb:
     accessModes:
       - ReadWriteOnce
     size: 8Gi
-  # 100m fits the least-loaded zone node that the hard anti-affinity forces
-  # the third replica onto; the Bitnami default of 250m left it Pending.
   resources:
     requests:
       cpu: 100m
