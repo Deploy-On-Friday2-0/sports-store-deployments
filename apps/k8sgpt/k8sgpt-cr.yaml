@@ -152,10 +152,11 @@ spec:
     enabled: true
     model: gemini-3.5-flash
     backend: google
+    anonymized: false
     secret:
       name: k8sgpt-secrets
       key: google-api-key
-  noCache: false
+  noCache: true
   targetNamespace: sports-store
   analysis:
     interval: 2m
@@ -164,6 +165,7 @@ spec:
     - Ingress
     - Service
     - Deployment
+    - Log
   sink:
     type: slack
     webhook: secret-managed
